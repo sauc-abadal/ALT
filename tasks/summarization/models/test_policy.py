@@ -33,7 +33,7 @@ def main():
 
     generation_config = GenerationConfig(
         max_length = 2048,
-        max_new_tokens = 512,
+        max_new_tokens = 256,
         do_sample = True, # False means greedy decoding
         num_beams = 1, # no beam search
         temperature = 1.0, 

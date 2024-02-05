@@ -30,7 +30,7 @@ class NLFPolicy:
         if not generation_config:
             generation_config = GenerationConfig(
                 max_length = 2048,
-                max_new_tokens = 512,
+                max_new_tokens = 256,
                 do_sample = False, # False means greedy decoding
                 num_beams = 1, # no beam search
                 temperature = 1.0, 
@@ -59,7 +59,8 @@ class NLFPolicy:
         generated_input_ids = outputs["sequences"][:, input_seq_len:] 
         generated_attention_mask = (generated_input_ids != self.tokenizer.pad_token_id).long()
         EOS_idx = torch.sum(generated_attention_mask, dim=-1)
-        generated_attention_mask.scatter_(1, EOS_idx.unsqueeze(1), 1)
+        if torch.max(EOS_idx) != generated_attention_mask.shape[1]: # if EOS actually predicted... this avoids CUDA error 
+            generated_attention_mask.scatter_(1, EOS_idx.unsqueeze(1), 1)
         # print(generated_input_ids) # is the generated sequence beginning with BOS and ending with EOS? first token: 50 -> NO | last token: 50256 -> YES
         # print(generated_input_ids.shape) # tensor of shape (B, gen_seq_len), completions right padded
         # print(generated_attention_mask) # last generated ID (EOS) with '1' attention
