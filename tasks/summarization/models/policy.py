@@ -6,7 +6,7 @@ from typing import Optional, Dict, List, Union
 
 from utils import mask_pad, logits_to_entropy
 
-class NLFPolicy:
+class Policy:
     def __init__(
         self,
         model_checkpoint_name: str,

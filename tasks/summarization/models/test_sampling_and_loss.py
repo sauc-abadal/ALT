@@ -1,5 +1,5 @@
-from tasks.summarization.models.policy import NLFPolicy
-from tasks.summarization.datasets.dataset_and_dataloader import TLDRDataset, PromptCollatorWithPadding
+from tasks.summarization.models.policy import Policy
+from tasks.summarization.datasets.sampling_dataset_and_collator import TLDRSamplingDataset, TLDRSamplingPromptCollatorWithPadding
 from utils import reduce_mean
 
 from transformers import AutoTokenizer, GenerationConfig
@@ -27,7 +27,7 @@ def main():
         tokenizer.pad_token = tokenizer.eos_token # as GPT-J's tokenizer doesn't have a padding token -> eos_token = bos_token = unk_token = pad_token = "<|endoftext|>", eos_token_id = bos_token_id = unk_token_id = pad_token_id = 50256
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    policy = NLFPolicy(
+    policy = Policy(
         model_checkpoint_name=model_checkpoint_name,
         device=device,
         tokenizer=tokenizer
@@ -48,13 +48,13 @@ def main():
         pad_token_id = tokenizer.pad_token_id, # error if not passed...
     )
 
-    datasets = TLDRDataset(
+    datasets = TLDRSamplingDataset(
         local_or_remote_path="CarperAI/openai_summarize_tldr",
         tokenizer=tokenizer,
         splits=["train", "valid", "test"],
         remote=True
     )
-    prompt_collator = PromptCollatorWithPadding(tokenizer)
+    prompt_collator = TLDRSamplingPromptCollatorWithPadding(tokenizer)
     print("Dataset and collator corretly initialized!")
 
     valid_dataset = datasets.datasets["valid"]

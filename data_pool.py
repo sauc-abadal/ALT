@@ -1,6 +1,5 @@
-from typing import List
+from typing import List, Tuple
 from copy import deepcopy
-from collections import defaultdict
 from pathlib import Path
 import json
 
@@ -42,64 +41,101 @@ class QuarkDataPool:
         self.scores_pool.extend(scores)
         
         # quantiles_pool restarted every time we add new data to the data_pool (after sampling) as data will be associated to different quantiles
-        self.quantiles_pool = ["" for _ in range(len(self.prompts_pool))]
+        self.quantiles_pool = []
 
-        # sort data iteratively according to one attribute score at a time
-        for attr_type in range(self.num_attributes):
-            data = zip(self.prompt_pool, self.response_pool, self.feedback_pool, self.score_pool[f"attr_{str(attr_type)}"])
-            data = [x for x in data if x[-1] is not None]
+        data = zip(self.prompts_pool, self.responses_pool, self.scores_pool)
+        data = [x for x in data if x[-1] is not None]
+        sorted_data = sorted(data, key=lambda x: x[-1], reverse=True) # sorted from maximum to minimum reward scores
+        self.prompts_pool, self.responses_pool, self.scores_pool = [list(x) for x in list(zip(*sorted_data))]
 
-            # get the sorting indices corresponding to sorting the data according to current attr_type
-            sorted_indices = [i for i, x in sorted(enumerate(data), key=lambda x: x[1][-1], reverse=True)]
+        # divide data pool into quantiles of roughly equal size (last quantile will be larger if the length of the data is not 
+        # divisible by the desired number of quantiles), and obtain the associated quantile index to each sample in the data pool
+        # e.g., currently the data pool has length 14 and we want to use 5 quantiles (the last four '4's are added as 14 % 5 != 0)
+        quantiles = [[i] * (len(sorted_data) // self.num_quantiles) for i in range(self.num_quantiles)] # -> [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]]
+        quantiles = [y for x in quantiles for y in x] # unfold list of lists into a single list -> [0, 0, 1, 1, 2, 2, 3, 3, 4, 4]
+        quantiles = quantiles + [self.num_quantiles - 1] * (len(sorted_data) - len(quantiles)) # append indices for the last quantile -> [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 4, 4, 4]
+        
+        self.quantiles_pool = [self.reward_quantile_tokens[i] for i in quantiles] # quantile idxs mapped to tokens understandable by the tokenizer (newly added)
 
-            # update pool of prompts, responses, feedback, and scores for current attr_type, according to current attr_type
-            sorted_data = [data[i] for i in sorted_indices]
-            self.prompt_pool, self.response_pool, self.feedback_pool, self.score_pool[f"attr_{str(attr_type)}"] = [list(x) for x in list(zip(*sorted_data))]
-            # update pool of scores for all other attr_types, according to current_attr_type
-            for j in range(self.num_attributes):
-              if j != attr_type:
-                self.score_pool[f"attr_{str(j)}"] = [self.score_pool[f"attr_{str(j)}"][i] for i in sorted_indices]
-            
-            # divide data pool into quantiles of roughly equal size (last quantile will be larger if the length of the data is not 
-            # divisible by the desired number of quantiles), and obtain the associated quantile index to each sample in the data pool
-            quantile_idx = [[i] * (len(sorted_data) // self.num_quantiles) for i in range(self.num_quantiles)]
-            quantile_idx = [y for x in quantile_idx for y in x] # unfold list of lists into a single list
-            quantile_idx = quantile_idx + [self.num_quantiles - 1] * (len(sorted_data) - len(quantile_idx)) # append indices for the last quantile
-            # e.g., quantile_idx will be [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 4, 4, 4] if currently the data pool has length 14 and we want to use 5 quantiles (the last four '4's are added as 14 % 5 != 0)
-            
-            # --- QUARK-based ---
-            if not self.nlf_cond:
-                self.feedback_pool = [(self.feedback_pool[i] + self.reward_quantile_tokens[attr_type][idx]).strip() for i, idx in enumerate(quantile_idx)]
+    def get_data(self) -> Tuple[List[str], List[str], List[str]]:
+        """
+        Get the data from the data pool.
 
-            # --- CTG NLF ---
-            else:
-                if attr_type == 0: # empty feedack_pool
-                    self.feedback_pool = [(self.feedback_pool[i] + " " + self.reward_quantile_tokens[attr_type][idx]).strip() for i, idx in enumerate(quantile_idx)] 
-                else:
-                    self.feedback_pool = [(self.feedback_pool[i] + ", and " + self.reward_quantile_tokens[attr_type][idx]).strip() for i, idx in enumerate(quantile_idx)]
+        Returns:
+            Tuple[List[str], List[str], List[str]: A tuple containing the input prompts, response sequences,
+            and associated reward quantile tokens.
 
+        """
+        return deepcopy(self.prompts_pool), deepcopy(self.responses_pool), deepcopy(self.quantiles_pool)
+
+    def save_data_for_training_in_json(self, save_path, step_num):
+        # save tuples of (quantile_token, promp, response, score) in reward_file
+        reward_file = Path(save_path) / f"quark_train_data_step_{step_num}.json"
+        with reward_file.open('a') as f:
+            for (quantile_data, prompt_data, response_data, score_data) in zip(self.quantiles_pool, self.prompts_pool, self.responses_pool, self.scores_pool):
+                response_dict = {
+                    'quantile_token': quantile_data,
+                    'prompt': prompt_data,
+                    'response': response_data,
+                    'reward_score': score_data
+                }
+                json.dump(response_dict, f)
+                f.write('\n')
+
+class NLFDataPool:
+    def __init__(self, num_feedback_labels: int):
+        """
+        Initialize a data pool for organizing and managing data.
+
+        The argument 'num_feedback_labels' might be helpful for categorizing the different feedbacks into
+        what extent specific samples are regarded as aligned. It might be understood as a score, e.g., 1-5,
+        which can be computed by the feedback provider (human or AI-written) along with the NL feedback.
+
+        It may help us to carry out some analysis afterward, and also it might be employed to train a 
+        supervised policy just on the "best" feedback samples, i.e., label 5.
+        """
+
+        self.num_feedback_labels = num_feedback_labels
+        self.feedbacks_labels_pool = []
+        self.prompts_pool, self.responses_pool, self.feedbacks_pool = [], [], []
+
+    def add(self, prompts: List[str], responses: List[str], feedbacks: List[str], feedbacks_labels: List[str]):
+        """
+        Add data to the data pool.
+
+        Args:
+            prompts (List[str]): A list of input prompts.
+            responses (List[str]): A list of response sequences.
+            feedbacks (List[str]): A list of natural language feedbacks (human or AI-written).
+            feedbacks_labels (List[int]): A list of labels specifying each feedback category.
+
+        """
+        self.prompts_pool.extend(prompts)
+        self.responses_pool.extend(responses)
+        self.feedbacks_labels.extend(feedbacks)
+        self.feedbacks_labels_pool.extend(feedbacks_labels_pool)
+        
     def get_data(self):
         """
         Get the data from the data pool.
 
         Returns:
             Tuple[List[str], List[str], List[str]: A tuple containing the input prompts, response sequences,
-            and feedback associated with quantiles.
+            and associated NL feedbacks.
 
         """
-        return deepcopy(self.prompt_pool), deepcopy(self.response_pool), deepcopy(self.feedback_pool)
+        return deepcopy(self.prompts_pool), deepcopy(self.responses_pool), deepcopy(self.feedbacks_pool)
 
     def save_data_for_training_in_json(self, save_path, step_num):
-        # save tuples of (prompt_feedback, promp, response, score) in reward_file
-        reward_file = Path(save_path) / f"multitask_train_data_{step_num}.json"
-        score_pool = self.score_pool
+        # save tuples of (quantile_token, promp, response, score) in reward_file
+        reward_file = Path(save_path) / f"NLF_train_data_step_{step_num}.json"
         with reward_file.open('a') as f:
-            for idx, (prompt_feedback_data, prompt_data, response_data) in enumerate(zip(self.feedback_pool, self.prompt_pool, self.response_pool)):
+            for (feedback_data, prompt_data, response_data, feedback_label_data) in zip(self.feedbacks_pool, self.prompts_pool, self.responses_pool, self.feedbacks_labels_pool):
                 response_dict = {
-                    'prompt_feedback': prompt_feedback_data,
+                    'feedback': feedback_data,
                     'prompt': prompt_data,
                     'response': response_data,
-                    'scores': [score_pool[f"attr_{str(attr)}"][idx] for attr in range(self.num_attributes)] # i.e., for each sample [rel, fact, comp]
+                    'feedback_label': feedback_label_data
                 }
                 json.dump(response_dict, f)
                 f.write('\n')

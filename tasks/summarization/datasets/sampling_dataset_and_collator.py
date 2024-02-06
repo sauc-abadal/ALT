@@ -1,12 +1,11 @@
 from datasets import load_dataset, DatasetDict
-from torch.utils.data import Dataset, DataLoader
 from transformers import AutoTokenizer, DataCollatorWithPadding
 import torch
 
 from typing import Union, List, Dict, Optional, Tuple
 import os
 
-class TLDRDataset():
+class TLDRSamplingDataset():
     def __init__(self, 
                  local_or_remote_path: Union[str, os.PathLike],
                  tokenizer: AutoTokenizer,
@@ -83,7 +82,7 @@ class TLDRDataset():
                 "prompt_attention_mask": prompt_dict["attention_mask"],
                 "summary": example["label"]}
 
-class PromptCollatorWithPadding(object):
+class TLDRSamplingPromptCollatorWithPadding(object):
     def __init__(self, tokenizer: AutoTokenizer):
         self.tokenizer = tokenizer
         self.data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer, return_tensors="pt")
