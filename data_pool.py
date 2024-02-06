@@ -3,6 +3,64 @@ from copy import deepcopy
 from pathlib import Path
 import json
 
+class NLFDataPool:
+    def __init__(self, num_feedback_labels: int):
+        """
+        Initialize a data pool for organizing and managing data.
+
+        The argument 'num_feedback_labels' might be helpful for categorizing the different feedbacks into
+        what extent specific samples are regarded as aligned. It might be understood as a score, e.g., 1-5,
+        which can be computed by the feedback provider (human or AI-written) along with the NL feedback.
+
+        It may help us to carry out some analysis afterward, and also it might be employed to train a 
+        supervised policy just on the "best" feedback samples, i.e., label 5.
+        """
+
+        self.num_feedback_labels = num_feedback_labels
+        self.feedbacks_labels_pool = []
+        self.prompts_pool, self.responses_pool, self.feedbacks_pool = [], [], []
+
+    def add(self, prompts: List[str], responses: List[str], feedbacks: List[str], feedbacks_labels: List[str]):
+        """
+        Add data to the data pool.
+
+        Args:
+            prompts (List[str]): A list of input prompts.
+            responses (List[str]): A list of response sequences.
+            feedbacks (List[str]): A list of natural language feedbacks (human or AI-written).
+            feedbacks_labels (List[int]): A list of labels specifying each feedback category.
+
+        """
+        self.prompts_pool.extend(prompts)
+        self.responses_pool.extend(responses)
+        self.feedbacks_labels.extend(feedbacks)
+        self.feedbacks_labels_pool.extend(feedbacks_labels_pool)
+        
+    def get_data(self):
+        """
+        Get the data from the data pool.
+
+        Returns:
+            Tuple[List[str], List[str], List[str]: A tuple containing the input prompts, response sequences,
+            and associated NL feedbacks.
+
+        """
+        return deepcopy(self.prompts_pool), deepcopy(self.responses_pool), deepcopy(self.feedbacks_pool)
+
+    def save_data_for_training_in_json(self, save_path, step_num):
+        # save tuples of (quantile_token, promp, response, score) in reward_file
+        reward_file = Path(save_path) / f"NLF_train_data_step_{step_num}.json"
+        with reward_file.open('a') as f:
+            for (feedback_data, prompt_data, response_data, feedback_label_data) in zip(self.feedbacks_pool, self.prompts_pool, self.responses_pool, self.feedbacks_labels_pool):
+                response_dict = {
+                    'feedback': feedback_data,
+                    'prompt': prompt_data,
+                    'response': response_data,
+                    'feedback_label': feedback_label_data
+                }
+                json.dump(response_dict, f)
+                f.write('\n')
+
 class QuarkDataPool:
     def __init__(self, reward_quantile_tokens: List[str], num_quantiles: int):
         """
@@ -78,64 +136,6 @@ class QuarkDataPool:
                     'prompt': prompt_data,
                     'response': response_data,
                     'reward_score': score_data
-                }
-                json.dump(response_dict, f)
-                f.write('\n')
-
-class NLFDataPool:
-    def __init__(self, num_feedback_labels: int):
-        """
-        Initialize a data pool for organizing and managing data.
-
-        The argument 'num_feedback_labels' might be helpful for categorizing the different feedbacks into
-        what extent specific samples are regarded as aligned. It might be understood as a score, e.g., 1-5,
-        which can be computed by the feedback provider (human or AI-written) along with the NL feedback.
-
-        It may help us to carry out some analysis afterward, and also it might be employed to train a 
-        supervised policy just on the "best" feedback samples, i.e., label 5.
-        """
-
-        self.num_feedback_labels = num_feedback_labels
-        self.feedbacks_labels_pool = []
-        self.prompts_pool, self.responses_pool, self.feedbacks_pool = [], [], []
-
-    def add(self, prompts: List[str], responses: List[str], feedbacks: List[str], feedbacks_labels: List[str]):
-        """
-        Add data to the data pool.
-
-        Args:
-            prompts (List[str]): A list of input prompts.
-            responses (List[str]): A list of response sequences.
-            feedbacks (List[str]): A list of natural language feedbacks (human or AI-written).
-            feedbacks_labels (List[int]): A list of labels specifying each feedback category.
-
-        """
-        self.prompts_pool.extend(prompts)
-        self.responses_pool.extend(responses)
-        self.feedbacks_labels.extend(feedbacks)
-        self.feedbacks_labels_pool.extend(feedbacks_labels_pool)
-        
-    def get_data(self):
-        """
-        Get the data from the data pool.
-
-        Returns:
-            Tuple[List[str], List[str], List[str]: A tuple containing the input prompts, response sequences,
-            and associated NL feedbacks.
-
-        """
-        return deepcopy(self.prompts_pool), deepcopy(self.responses_pool), deepcopy(self.feedbacks_pool)
-
-    def save_data_for_training_in_json(self, save_path, step_num):
-        # save tuples of (quantile_token, promp, response, score) in reward_file
-        reward_file = Path(save_path) / f"NLF_train_data_step_{step_num}.json"
-        with reward_file.open('a') as f:
-            for (feedback_data, prompt_data, response_data, feedback_label_data) in zip(self.feedbacks_pool, self.prompts_pool, self.responses_pool, self.feedbacks_labels_pool):
-                response_dict = {
-                    'feedback': feedback_data,
-                    'prompt': prompt_data,
-                    'response': response_data,
-                    'feedback_label': feedback_label_data
                 }
                 json.dump(response_dict, f)
                 f.write('\n')
