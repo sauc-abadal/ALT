@@ -39,7 +39,6 @@ dependencies:
   - cycler=0.11.0=pyhd3eb1b0_0
   - cyrus-sasl=2.1.28=h52b45da_1
   - dataclasses=0.8=pyh6d0b6a4_7
-  - datasets=2.12.0=py39h06a4308_0
   - dbus=1.13.18=hb2f20db_0
   - dill=0.3.6=py39h06a4308_0
   - expat=2.5.0=h6a678d5_0
@@ -168,6 +167,7 @@ dependencies:
   - zlib=1.2.13=h5eee18b_0
   - zstd=1.5.5=hc292b87_0
   - pip:
+      - datasets==2.17.0
       - fsspec==2024.2.0
       - jinja2==3.1.3
       - markupsafe==2.1.5
@@ -185,6 +185,7 @@ dependencies:
       - nvidia-nccl-cu12==2.19.3
       - nvidia-nvjitlink-cu12==12.3.101
       - nvidia-nvtx-cu12==12.1.105
+      - pyarrow-hotfix==0.6
       - sympy==1.12
       - torch==2.2.0
       - triton==2.2.0
