@@ -207,15 +207,18 @@ class QuarkTrainer:
         self.policy.model.train()
 
         try:
-            batch = next(self.sampler)
+            batch = next(self.training_sampler) # dictionary with keys "inputs", "outputs", "prompts", "input_seqs", "output_seqs"
             assert len(batch[0]) == self.params['train']['training_batch_size_per_card'], 'insufficent batch'
 
         except (StopIteration, AssertionError):
-            self.sampler = iter(self.sample_dataloader)  # reset iteration to the beginning of data
-            batch = next(self.sampler)
+            self.training_sampler = iter(self.training_dataloader)  # reset iteration to the beginning of data
+            batch = next(self.training_sampler)
 
         self.optimizer.zero_grad()
-        loss, stats = self.loss(step_num, *batch)
+        inputs_dict = batch["inputs"]
+        outputs_dict = batch["outputs"]
+
+        loss, stats = self.loss(step_num, inputs_dict, outputs_dict)
         loss.backward()
 
         if self.params['train']['clip_grad']:
@@ -230,71 +233,77 @@ class QuarkTrainer:
 
         # --- EVALUATION ---
         self.policy.model.eval()
-        eval_metric = self.eval(step_num) # eval_metric returned as the avg score between all RMs on all dev samples
+        self.eval(step_num)
 
        # --- LOGGING ---
         if self.params['logging']['wandb_log']:
-            for metric in ['kl', 'entropy']:
-                wandb.log({f'Objective/{metric}': stats[f'objective/{metric}']}, step=step_num)
-
             for metric in ['lm', 'kl', 'entropy', 'total']:
                 wandb.log({f'Loss/{metric}': stats[f'loss/{metric}']}, step=step_num)
-
             wandb.log({f'Params/lr': self.optimizer.param_groups[0]['lr']}, step=step_num)
 
         # --- SAVING ---
-        # Save the top models
-        self.save(step_num, eval_metric)
+        self.save(step_num)
+ 
+    def loss(self, step_num, inputs_dict, outputs_dict):
 
-    
-    def loss(self, step_num, query_input_ids, query_mask, response_input_ids, response_mask):
-        # query_input_ids, query_mask have already NLF / Reward quantiles tokens prepended
-        outputs = self.policy.forward_pass(query_input_ids, query_mask, response_input_ids, response_mask)
-        lm_loss, logprobs, entropy, logits = outputs['lm_loss'], outputs['generated_logprobs'], outputs['generated_entropy'], outputs['generated_logits']
-        if not self.nlf_cond: # Quark-based
-            flattened_feedback_types = [feedback for feedback_type in self.feedback_types for feedback in feedback_type]
-            logits = logits[:, :, :-len(flattened_feedback_types)]
-        masks = response_mask.to(self.policy.device)
+        prompts_input_ids = inputs_dict["input_ids"]
+        prompts_attention_mask = inputs_dict["attention_mask"]
+        generations_input_ids = outputs_dict["input_ids"]
+        generations_attention_mask = outputs_dict["attention_mask"]
+
+        outputs = self.policy.forward_pass(
+            input_ids=prompts_input_ids,
+            attention_mask=prompts_attention_mask,
+            generated_input_ids=generations_input_ids,
+            generated_attention_mask=generations_attention_mask
+        )
+
+        generated_logits = outputs["generated_logits"]
+        generated_logprobs = outputs["generated_logprobs"]
+        generated_entropy = outputs["generated_entropy"]
+        lm_loss = outputs["lm_loss"]
+
+        generated_logits = generated_logits[:, :, :-len(self.num_quantiles)]
+
+        masks = generations_attention_mask.to(self.policy.device)
 
         with torch.no_grad():
-            query_input_ids, query_mask = self.remove_any_feedback_from_prompt_input_ids(input_ids=query_input_ids, 
-                                                                                         attention_mask=query_mask, 
-                                                                                         tokenizer=self.policy.tokenizer,
-                                                                                         nlf_cond=self.nlf_cond)
-            ref_outputs = self.ref_policy.forward_pass(query_input_ids, query_mask, response_input_ids, response_mask)
-            ref_logprobs, ref_logits = ref_outputs['generated_logprobs'], ref_outputs['generated_logits']
+            prompts_input_ids_raw, prompts_attention_mask_raw = self.remove_quantile_from_prompt_input_ids(
+                input_ids=prompts_input_ids, 
+                attention_mask=prompts_attention_mask
+            )
+            ref_outputs = self.ref_policy.forward_pass(
+                input_ids=prompts_input_ids_raw,
+                attention_mask=prompts_attention_mask_raw,
+                generated_input_ids=generations_input_ids,
+                generated_attention_mask=generations_attention_mask
+            )
 
-        kl = torch.sum(self.kl_loss(F.log_softmax(logits, dim=-1), F.softmax(ref_logits, dim=-1)), dim=-1)
-        loss = reduce_mean(lm_loss + self.params['env']['kl_coef']*kl - self.params['env']['entropy_coef']*entropy, masks)
+            ref_logits = ref_outputs['generated_logits']
+            ref_logprobs = ref_outputs['generated_logprobs']
 
-        data = {'logprobs': logprobs, 'ref_logprobs': ref_logprobs, 'masks': masks,
-                'logits': logits, 'ref_logits': ref_logits,
+        kl = torch.sum(self.kl_loss(F.log_softmax(generated_logits, dim=-1), F.softmax(ref_logits, dim=-1)), dim=-1)
+        loss = reduce_mean(lm_loss + self.params['train']['kl_coef']*kl - self.params['train']['entropy_coef']*generated_entropy, masks)
+
+        data = {'logprobs': generated_logprobs, 'ref_logprobs': ref_logprobs, 'masks': masks,
+                'logits': generated_logits, 'ref_logits': ref_logits,
                 'lm_loss': reduce_mean(lm_loss, masks), 'kl_loss': reduce_mean(kl, masks),
-                'entropy': reduce_mean(entropy, masks), 'total_loss': loss}
+                'entropy': reduce_mean(generated_entropy, masks), 'total_loss': loss}
         stats = self.record_step_stats(data)
 
-        queries, responses = self.decode(self.policy.tokenizer, query_input_ids, response_input_ids)
-        self.print_samples(queries=queries, responses=responses, lm_loss=reduce_mean(lm_loss, masks, axis=1),
-                           logprobs=logprobs, ref_logprobs=ref_logprobs, masks=masks, step_num=step_num)
+        prompts, generations = self.decode(self.policy.tokenizer, prompts_input_ids_raw, generations_input_ids, skip_special_tokens=True)
+        self.print_samples(queries=prompts, responses=generations, lm_loss=reduce_mean(lm_loss, masks, axis=1),
+                           logprobs=generated_logprobs, ref_logprobs=ref_logprobs, masks=masks, step_num=step_num)
 
         return loss, stats
 
     def record_step_stats(self, data):
-        masks = data['masks']
-        kl = torch.sum(self.kl_loss(F.log_softmax(data['ref_logits'], dim=-1), F.softmax(data['logits'], dim=-1)), dim=-1)
-        mean_kl = torch.mean(reduce_sum(kl, masks, axis=1))
-        mean_entropy = torch.mean(reduce_sum(-data['logprobs'], masks, axis=1))
-        stats = {
-            'objective/kl': mean_kl.item(),
-            'objective/entropy': mean_entropy.item(),
-        }
         stats.update({
             'loss/total': data['total_loss'].item(),
             'loss/kl': data['kl_loss'].item(),
             'loss/lm': data['lm_loss'].item(),
             'loss/entropy': data['entropy'].item(),
         })
-
         return stats
 
     def print_samples(self, queries, responses, lm_loss, logprobs, ref_logprobs, masks, step_num):
@@ -305,12 +314,10 @@ class QuarkTrainer:
         for i in range(min(3, len(queries))):
             sample_kl = torch.sum((logprobs[i] - ref_logprobs[i]) * masks[i]).item()
             print(f"\nSample {i+1}")
-            print(f"{queries[i]} | {responses[i]}")
+            print(queries[i] + responses[i])
             print(f"  lm_loss = {lm_loss[i].item():+.2f}")
             print(f"  kl = {sample_kl:+.2f}")
-            print(f"  total = {lm_loss[i].item() + self.params['env']['kl_coef'] * sample_kl:+.2f}")
-
-    import heapq
+            print(f"  total = {lm_loss[i].item() + self.params['train']['kl_coef'] * sample_kl:+.2f}")
 
     def save(self, step_num, eval_metric):
         if step_num % self.params['logging']['save_interval'] != 0:
