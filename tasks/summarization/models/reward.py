@@ -132,6 +132,35 @@ class GPTRewardModel(nn.Module):
         rewards = torch.stack(rewards)
         return rewards.cpu().tolist()
 
+class MyRMDataset(Dataset):
+        def __init__(self, samples: List[str]):
+
+            self.samples = ["<|startoftext|>" + sample.split("TL;DR:")[0].strip() + "\n" + "TL;DR: " + sample.split("TL;DR:")[1].strip() + "<|endoftext|>" for sample in samples]
+
+        def __len__(self):
+            return len(self.samples)
+
+        def __getitem__(self, idx):
+            return self.samples[idx]
+
+    class MyRMDataCollator:
+        def __init__(self, tokenizer: AutoTokenizer, max_length: int):
+            self.tokenizer = tokenizer
+            self.max_length = max_length
+
+        def __call__(self, data: List[str]):
+            batch = {}
+            encodings_dict = tokenizer(
+                data,
+                truncation=True,
+                max_length=self.max_length,
+                padding="max_length",
+                return_tensors="pt",
+            )
+            batch["input_ids"] = encodings_dict["input_ids"]
+            batch["attention_mask"] = encodings_dict["attention_mask"]
+            return batch
+
 
 
     

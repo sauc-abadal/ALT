@@ -111,3 +111,63 @@ class TLDRSamplingPromptCollatorWithPadding(object):
 
         return {"inputs": inputs, "prompts": prompts, "summaries": summaries}
 
+class QuarkTLDRSamplingPromptCollatorWithPadding(object):
+    def __init__(self, tokenizer: AutoTokenizer, quantile_tokens: List[str]):
+        self.tokenizer = tokenizer
+        self.data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer, return_tensors="pt")
+
+        self.quantile_tokens = quantile_tokens # List[str]
+        self.quantile_tokens_ids = self.tokenizer.convert_tokens_to_ids(self.quantile_tokens) # List[int]
+        self.best_quantile_token = self.quantile_tokens[0] # str
+        self.best_quantile_id = self.tokenizer.convert_tokens_to_ids(self.best_quantile_token) # int
+        self.num_quantiles = len(self.quantile_tokens)
+
+    def __call__(
+        self, 
+        examples: List[Dict[str, Union[str, List[int]]]],
+        best_quantile=True,
+        conditioning=True) -> Dict[str, Union[List[str], Dict[str, torch.Tensor]]]:
+        """
+        Collate prompts for LLM input by padding already tokenized prompts to the maximum sequence 
+        length in a batch of examples. Also prepend reward quantile token to prompt input_ids.
+        Args:
+            examples: A list of examples, each represented as a dictionary with keys: "prompt" containing the prompt text,
+            "prompt_input_ids" and "prompt_attention_mask" with the tokenized prompt text and attention mask respectively, 
+            and "summary" containing the human-written summary text.
+            best_quantile: boolean indicating whether to condition on the best reward quantile token during sampling, or
+            condition on randomly drawn quantiles.
+            conditioning: boolean indicating whether reward quantile tokens must be prepended to prompt input_ids or not
+            (in the first sampling step we sample unconditioned).
+
+        Returns:
+            Dictionary with keys "inputs", "prompts", and "summaries". "inputs" contains 
+            a dictionary with keys "input_ids" and "attention_mask", 
+            and values padded tensors of shape (B, S), being S the length of the longest sequence in the batch,
+            where each element in the batch has been prepended with a reward quantile token if conditioning=True.
+        """
+        prompts = [example["prompt"] for example in examples]
+        summaries = [example["summary"] for example in examples]
+
+        desired_keys = ["prompt_input_ids", "prompt_attention_mask"]
+        renamed_keys = ["input_ids", "attention_mask"]
+        inputs = [{renamed_keys[i]: example[key] for i, key in enumerate(desired_keys)} for example in examples]
+
+        if conditioning:
+            input_ids = inputs["input_ids"]
+            attention_mask["attention_mask"]
+            # preprend reward quantile token to prompt input_ids before left-padding
+            if best_quantile:
+                input_ids = [[self.best_quantile_id] + input_ids_batch for input_ids_batch in input_ids]
+                attention_mask = [[1] + attention_mask_batch for attention_mask_batch in attention_mask]
+            else:
+                batch_size = len(input_input_ids)
+                quantiles_idx = random.choices(range(self.num_quantiles), k=batch_size)
+                input_ids = [[self.quantile_tokens_ids[quantiles_idx[i]]] + input_ids[i] for i in range(batch_size)]
+                attention_mask = [[1] + attention_mask_batch for attention_mask_batch in attention_mask]
+
+            inputs["input_ids"] = input_ids
+            inputs["attention_mask"] = attention_mask
+
+        inputs = self.data_collator(inputs)
+        return {"inputs": inputs, "prompts": prompts, "summaries": summaries}
+

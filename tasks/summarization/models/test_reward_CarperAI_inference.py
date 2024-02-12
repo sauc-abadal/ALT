@@ -95,8 +95,8 @@ if __name__ == "__main__":
     model = GPTRewardModel("CarperAI/openai_summarize_tldr_sft")
     state_dict = torch.load("/cluster/work/sachan/sauc/summarize_from_feedback/reward_model/rm_checkpoint/pytorch_model.bin")
     # this should work...?
-    keys_to_filter = [f"transformer.h.{i}.attn.bias" for i in range(28)] + [f"transformer.h.{i}.attn.masked_bias" for i in range(28)]
-    state_dict = {k: v for k, v in state_dict.items() if k not in keys_to_filter}
+    # keys_to_filter = [f"transformer.h.{i}.attn.bias" for i in range(28)] + [f"transformer.h.{i}.attn.masked_bias" for i in range(28)]
+    # state_dict = {k: v for k, v in state_dict.items() if k not in keys_to_filter}
     #
     model.load_state_dict(state_dict)
     max_length = 550
