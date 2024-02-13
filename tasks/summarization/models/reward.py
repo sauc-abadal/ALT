@@ -1,10 +1,9 @@
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoModelForCausalLM
 import torch
 from torch import nn
+from torch.utils.data import Dataset
 
 from typing import List, Optional, Dict, Tuple
-
-from utils import batchify
 
 class GPTRewardModel(nn.Module):
     def __init__(self, model_path):
@@ -143,23 +142,23 @@ class MyRMDataset(Dataset):
         def __getitem__(self, idx):
             return self.samples[idx]
 
-    class MyRMDataCollator:
-        def __init__(self, tokenizer: AutoTokenizer, max_length: int):
-            self.tokenizer = tokenizer
-            self.max_length = max_length
+class MyRMDataCollator:
+    def __init__(self, tokenizer: AutoTokenizer, max_length: int):
+        self.tokenizer = tokenizer
+        self.max_length = max_length
 
-        def __call__(self, data: List[str]):
-            batch = {}
-            encodings_dict = tokenizer(
-                data,
-                truncation=True,
-                max_length=self.max_length,
-                padding="max_length",
-                return_tensors="pt",
-            )
-            batch["input_ids"] = encodings_dict["input_ids"]
-            batch["attention_mask"] = encodings_dict["attention_mask"]
-            return batch
+    def __call__(self, data: List[str]):
+        batch = {}
+        encodings_dict = self.tokenizer(
+            data,
+            truncation=True,
+            max_length=self.max_length,
+            padding="max_length",
+            return_tensors="pt",
+        )
+        batch["input_ids"] = encodings_dict["input_ids"]
+        batch["attention_mask"] = encodings_dict["attention_mask"]
+        return batch
 
 
 

@@ -4,12 +4,10 @@ import argparse
 import yaml
 import json
 from datetime import datetime
-from typing import List, Tuple, Optional, Union
+from typing import Dict, List, Tuple, Optional, Union, Float
 from pathlib import Path
 import time
 import sys
-import shutil
-from copy import deepcopy
 
 from tqdm import tqdm
 from transformers import AutoTokenizer, get_scheduler, DataCollatorWithPadding, GenerationConfig
@@ -18,9 +16,8 @@ import numpy as np
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import wandb
-import random
 
-from utils import set_seed, ensure_dir, ceil_div, reduce_sum, reduce_mean, WANDB_API_KEY
+from utils import set_seed, ensure_dir, ceil_div, reduce_sum, reduce_mean, distinctness, WANDB_API_KEY
 from tasks.summarization.models.policy import Policy
 from tasks.summarization.models.reward import GPTRewardModel, MyRMDataset, MyRMDataCollator
 from tasks.summarization.datasets.sampling_dataset_and_collator import TLDRSamplingDataset, QuarkTLDRSamplingPromptCollatorWithPadding
@@ -37,8 +34,8 @@ with open(args.config) as f:
     args = yaml.safe_load(f)
 
 
-logging.basicConfig(steam=sys.stdout, level=logging.INFO) # log levels, from least severe to most severe, are: DEBUG, INFO, WARNING, ERROR, and CRITICAL.
-log = logging.getLogger(__name__)
+# logging.basicConfig(steam=sys.stdout, level=logging.INFO) # log levels, from least severe to most severe, are: DEBUG, INFO, WARNING, ERROR, and CRITICAL.
+# log = logging.getLogger(__name__)
 
 class QuarkTrainer:
     def __init__(self,
@@ -53,7 +50,8 @@ class QuarkTrainer:
                  sampling_dev_dataloader: DataLoader,
                  optimizer: torch.optim.Optimizer,
                  scheduler: torch.optim.lr_scheduler.LambdaLR,
-                 generation_config: GenerationConfig,
+                 train_generation_config: GenerationConfig,
+                 eval_generation_config: GenerationConfig,
                  ) -> None:
         
         self.params = params
@@ -68,7 +66,8 @@ class QuarkTrainer:
         self.sampling_dev_dataloader = sampling_dev_dataloader
         self.optimizer = optimizer
         self.scheduler = scheduler
-        self.generation_config = generation_config
+        self.train_generation_config = train_generation_config
+        self.eval_generation_config = eval_generation_config
 
         self.kl_loss = torch.nn.KLDivLoss(reduction="none")
 
@@ -76,10 +75,15 @@ class QuarkTrainer:
         self.best_quantile_token = self.quantile_tokens[0]
         self.best_quantile_id = self.policy.tokenizer.convert_tokens_to_ids(self.best_quantile_token)
 
+        self.sampling_prompt_collator = QuarkTLDRSamplingPromptCollatorWithPadding(tokenizer=self.policy.tokenizer, quantile_tokens=self.quantile_tokens)
+
         self.training_dataloader, self.training_sampler = None, None
         self.training_seq_collator = QuarkTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
 
         self.rm_collator = MyRMDataCollator(tokenizer=self.reward_tokenizer, max_length=self.reward_tokenizer.max_length)
+
+    def collate_fn_wrapper(self, batch, best_quantile=True, conditioning=True):
+        return self.sampling_prompt_collator(batch, best_quantile=best_quantile, conditioning=conditioning)
 
     def remove_quantile_from_prompt_input_ids(self,
                                               input_ids: torch.Tensor,
@@ -120,20 +124,20 @@ class QuarkTrainer:
         generations = tokenizer.batch_decode(generation_input_ids, skip_special_tokens=skip_special_tokens, clean_up_tokenization_spaces=True)
         return (prompts, generations)
 
-    def sample(self, step_num):
+    def sample(self, step_num) -> None:
         if step_num % self.params['train']['sample_interval'] != 0:
             return
         
-        print(f"[step {step_num}] | Sampling stage...")
+        print(f"[step {step_num}] | Sampling stage ...")
 
         if step_num == 0:
             # in the 1st sampling phase, use collate_fn that collated batches of data without reward quantile tokens
-            collate_fn = lambda batch: collate_fn_wrapper(batch, best_quantile=True, conditioning=False)     
+            collate_fn = lambda batch: self.collate_fn_wrapper(batch, best_quantile=True, conditioning=False)     
         else:
             # in subsequent sampling phases, use collate_fn that collates batches of data with reward quantile tokens
-            collate_fn = lambda batch: collate_fn_wrapper(batch, best_quantile=True, conditioning=True)
+            collate_fn = lambda batch: self.collate_fn_wrapper(batch, best_quantile=True, conditioning=True)
         
-        train_dataloader.collate_fn = collate_fn
+        self.train_dataloader.collate_fn = collate_fn
 
         prompts, prompts_quantile, generations = [], [], []
         for i, batch in enumerate(tqdm(self.sampling_train_dataloader, total=len(self.sampling_train_dataloader), desc='Sampling from current policy')):
@@ -143,7 +147,7 @@ class QuarkTrainer:
             rollouts = self.policy.sample(
                 input_ids=input_ids, 
                 attention_mask=attention_mask,
-                generation_config=generation_config)
+                generation_config=self.train_generation_config)
             
             prompts_quantile_batch = self.decode(tokenizer=self.policy.tokenizer, query_input_ids=input_ids, skip_special_tokens=False)
             generations_batch = rollouts["generated_text"]
@@ -167,7 +171,7 @@ class QuarkTrainer:
                 for x in rm_batch:
                     rm_batch[x] = rm_batch[x].cuda()
                 rewards_batch = self.reward_model.get_reward(**rm_batch)
-                rewards.extend(rm_batch)
+                rewards.extend(rewards_batch)
         
         # data_pool also receives prompts without rewards quantile tokens, as it orders the data points according to their rewards and then assigns a reward quantile token each to them
         self.data_pool.add(prompts=prompts, responses=generations, scores=rewards)
@@ -177,7 +181,7 @@ class QuarkTrainer:
         # 1. save tuples of (prompt_quantile, prompt, generation, rewards) in reward_file
         reward_file = Path(self.params['reward_dir']) / f"quark_sampling_data_step_{step_num}.json"
         with reward_file.open('a') as f:
-            for idx, (prompt_quantile_data, prompt_data, generation_data, reward_data) in enumerate(zip(prompts_quantile, prompts, generations, rewards)):
+            for (prompt_quantile_data, prompt_data, generation_data, reward_data) in zip(prompts_quantile, prompts, generations, rewards):
                 response_dict = {
                     'prompt_quantile': prompt_quantile_data,
                     'prompt': prompt_data,
@@ -200,7 +204,7 @@ class QuarkTrainer:
         )
         self.training_sampler = iter(self.training_dataloader)
 
-    def step(self, step_num):
+    def step(self, step_num) -> None:
         step_started_at = time.time()
         self.policy.model.eval()
         self.sample(step_num)
@@ -229,7 +233,7 @@ class QuarkTrainer:
 
         step_time = time.time() - step_started_at
         eps_per_second = float(self.params['train']['training_batch_size_per_card']) / step_time
-        print(f"[step {step_num}] step_time={step_time:.2f}s, eps/s={eps_per_second:.2f}")     
+        print(f"[step {step_num}] | Training ... step_time={step_time:.2f}s, eps/s={eps_per_second:.2f}")     
 
         # --- EVALUATION ---
         self.policy.model.eval()
@@ -244,7 +248,7 @@ class QuarkTrainer:
         # --- SAVING ---
         self.save(step_num)
  
-    def loss(self, step_num, inputs_dict, outputs_dict):
+    def loss(self, step_num, inputs_dict, outputs_dict) -> Tuple[torch.Tensor, Dict[str, Float]]:
 
         prompts_input_ids = inputs_dict["input_ids"]
         prompts_attention_mask = inputs_dict["attention_mask"]
@@ -297,16 +301,16 @@ class QuarkTrainer:
 
         return loss, stats
 
-    def record_step_stats(self, data):
-        stats.update({
+    def record_step_stats(self, data) -> Dict[str, Float]:
+        stats = {
             'loss/total': data['total_loss'].item(),
             'loss/kl': data['kl_loss'].item(),
             'loss/lm': data['lm_loss'].item(),
             'loss/entropy': data['entropy'].item(),
-        })
+        }
         return stats
 
-    def print_samples(self, queries, responses, lm_loss, logprobs, ref_logprobs, masks, step_num):
+    def print_samples(self, queries, responses, lm_loss, logprobs, ref_logprobs, masks, step_num) -> None:
         if step_num % self.params['logging']['log_interval'] != 0:
             return
 
@@ -319,162 +323,106 @@ class QuarkTrainer:
             print(f"  kl = {sample_kl:+.2f}")
             print(f"  total = {lm_loss[i].item() + self.params['train']['kl_coef'] * sample_kl:+.2f}")
 
-    def save(self, step_num, eval_metric):
+    def save(self, step_num) -> None:
         if step_num % self.params['logging']['save_interval'] != 0:
             return
-
-        eval_metric = float(eval_metric)
-
-        # --- TOP MODELS ---
-        if len(self.top_models) < self.top_models_limit:
-            model_filename = f'{self.params["model_dir"]}/model_metric_{eval_metric}_step_{step_num}.pth'
-            # If the list of top models is not full, add the current model to the queue
-            heapq.heappush(self.top_models, (eval_metric, {
-                'eval_metric': eval_metric,
-                'model_name': model_filename,
-                'step': step_num
-            }))
-            # Save model checkpoint to disk
-            torch.save({
-                'eval_metric': eval_metric,
-                'policy_model': self.policy.model.state_dict(),
-                'optimizer': self.optimizer.state_dict(),
-                'scheduler': self.scheduler.state_dict(),
-                'step': step_num
-            }, model_filename)
-            print(f"Saved checkpoint with metric {eval_metric} at step {step_num}")
-        else:
-            # If the list is full, compare the current model with the worst (lowest metric) in the top models queue
-            worst_model = heapq.heappop(self.top_models)
-
-            if eval_metric > worst_model[0]:
-                # Remove worst model checkpoint from disk
-                worst_model_filename = worst_model[1]['model_name']
-                if os.path.exists(worst_model_filename):
-                    os.remove(worst_model_filename)
-                    print(f"The checkpoint {worst_model_filename} has been removed.")
-                else:
-                    print(f"The checkpoint {worst_model_filename} does not exist.")
-
-                model_filename = f'{self.params["model_dir"]}/model_metric_{eval_metric}_step_{step_num}.pth'
-                # Replace the worst model in the queue with the current model
-                heapq.heappush(self.top_models, (eval_metric, {
-                    'eval_metric': eval_metric,
-                    'model_name': model_filename,
-                    'step': step_num
-                }))
-                # Save model checkpoint to disk
-                torch.save({
-                    'eval_metric': eval_metric,
-                    'policy_model': self.policy.model.state_dict(),
-                    'optimizer': self.optimizer.state_dict(),
-                    'scheduler': self.scheduler.state_dict(),
-                    'step': step_num
-                }, model_filename)
-                print(f"Saved checkpoint with metric {eval_metric} at step {step_num}")
-            else:
-                # Put the worst model back in the heap queue (it hasn't been erased from disk)
-                heapq.heappush(self.top_models, worst_model)
+        
+        torch.save({
+            'policy_model': self.policy.model.state_dict(),
+            'optimizer': self.optimizer.state_dict(),
+            'scheduler': self.scheduler.state_dict()
+        }, f"{self.params['model_dir']}/ckp_{step_num}.pth")
+        log.info(f"[step {step_num}] | Model checkpoint saved!")
 
     def eval(self, step_num) -> Union[float, None]:
         if step_num % self.params['logging']['eval_interval'] != 0:
             return None
-        print(f"[step {step_num}] Evaluating ...")
+        print(f"[step {step_num}] | Evaluating on the dev set ...")
 
-        prompts, responses = [], []
-        references = []
-        for i, batch in enumerate(tqdm(self.dev_dataloader, desc='(eval) Sampling from current policy')):
-            with torch.no_grad():
-                input_ids, attention_mask = batch["inputs"]
-                references.extend(batch["references"])
+        prompts, prompts_quantile, generations, summaries = [], [], [], []
+        perplexities = []
+        for i, batch in enumerate(tqdm(self.sampling_dev_dataloader, total=len(self.sampling_dev_dataloader), desc='(eval) Sampling from current policy')):
+            input_ids, attention_mask = batch["inputs"]
+            prompts_batch = batch["prompts"]
+            summaries_batch = batch["summaries"]
 
-                input_ids_feedback, attention_mask = self.add_feedback_to_prompt_input_ids(
-                    input_ids=input_ids, attention_mask=attention_mask,
-                    tokenizer=self.policy.tokenizer,
-                    feedback=None,
-                    best_feedback=True,
-                    feedback_quantiles=None,
-                    nlf_cond=self.nlf_cond
-                )
-                rollouts = self.policy.sample(prompts_input_ids=input_ids_feedback,
-                                              prompts_attention_mask=attention_mask,
-                                              do_sample=self.params['model']['policy_model']['eval_generation_kwargs']['do_sample'],
-                )
-                response = rollouts["generated_text"]
-                prompt = self.decode(tokenizer=self.policy.tokenizer, query_input_ids=input_ids)
-
-                prompts.extend(prompt)
-                responses.extend(response)
-
-        eval_output = self.score_model.get_metrics(
-            prompt_texts=prompts, 
-            generated_texts=responses, 
-            batch_size=self.params['reward']['batch_size'],
-            references=references
-        )
-        # RELEVANCY
-        n_sub_sentences = eval_output["n_sub_sentences"]
-        n_corrects_rel = eval_output["n_corrects_rel"]
-        rel_rewards = eval_output["rel_rewards"]
-
-        rel_scores_mean_over_num_samples = np.mean(rel_rewards) # averaged output score for all dev_set samples 
-        rel_scores_mean_over_num_sentences = np.sum(rel_rewards) / np.sum(n_sub_sentences) # averaged output score for all dev_set senteces
-        rel_correct_ratio = np.sum(n_corrects_rel) / np.sum(n_sub_sentences) # percentage of al sentences in the dev_set predicted as "no error"
-
-        print(f"Averaged Relevancy score for all dev_set samples = {rel_scores_mean_over_num_samples:+.2f}")
-        print(f"Averaged Relevancy score for all dev_set sentences = {rel_scores_mean_over_num_sentences:+.2f}")
-        print(f"(rel) Percentage of all subsentences in the dev_set predicted as 'no error' = {rel_correct_ratio:+.2f}")
-
-        # FACTUALITY
-        n_sentences = eval_output["n_sentences"]
-        n_corrects_fact = eval_output["n_corrects_fact"]
-        fact_rewards = eval_output["fact_rewards"]
-
-        fact_scores_mean_over_num_samples = np.mean(fact_rewards) # averaged output score for all dev_set samples 
-        fact_scores_mean_over_num_sentences = np.sum(fact_rewards) / np.sum(n_sentences) # averaged output score for all dev_set senteces
-        fact_correct_ratio = np.sum(n_corrects_fact) / np.sum(n_sentences) # percentage of al sentences in the dev_set predicted as "no error"
+            # sample generations
+            rollouts = self.policy.sample(
+                input_ids=input_ids, 
+                attention_mask=attention_mask,
+                generation_config=self.eval_generation_config)
+            
+            prompts_quantile_batch = self.decode(tokenizer=self.policy.tokenizer, query_input_ids=input_ids, skip_special_tokens=False)
+            generations_batch = rollouts["generated_text"]
         
-        print(f"Averaged Factuality score for all dev_set samples = {fact_scores_mean_over_num_samples:+.2f}")
-        print(f"Averaged Factuality score for all dev_set sentences = {fact_scores_mean_over_num_sentences:+.2f}")
-        print(f"(fact) Percentage of all sentences in the dev_set predicted as 'no error' = {fact_correct_ratio:+.2f}")
+            prompts.extend(prompts_batch)
+            generations.extend(generations_batch)
+            prompts_quantile.extend(prompts_quantile_batch)
+            summaries.extend(summaries_batch)
 
-        # COMPLETENESS
-        comp_rewards = eval_output["comp_rewards"]
+            # get ref_logprobs to compute perplexity
+            with torch.no_grad():
+                generations_input_ids = rollouts["generated_input_ids"]
+                generations_attention_mask = rollouts["generated_attention_mask"]
 
-        comp_scores_mean_over_num_samples = np.mean(comp_rewards) # averaged output score for all dev_set samples 
+                prompts_input_ids_raw, prompts_attention_mask_raw = self.remove_quantile_from_prompt_input_ids(
+                    input_ids=input_ids, 
+                    attention_mask=attention_mask
+                )
+                ref_outputs = self.ref_policy.forward_pass(
+                    input_ids=prompts_input_ids_raw,
+                    attention_mask=prompts_attention_mask_raw,
+                    generated_input_ids=generations_input_ids,
+                    generated_attention_mask=generations_attention_mask
+                )
 
-        print(f"Averaged Completeness score for all dev_set samples = {comp_scores_mean_over_num_samples:+.2f}")
+                ref_logprobs = ref_outputs['generated_logprobs']
+                perplexity = torch.exp(-1 * reduce_mean(ref_logprobs, generations_attention_mask.float(), axis=1), dim=1)
+                perplexities.extend(perplexity.cpu().detach().numpy().tolist())
 
-        # OTHERS
-        generations_lens = eval_output["generations_lens"]
-        rouge_scores = eval_output["rouge_scores"]
+        # rewards are computed on prompts without reward quantile tokens
+        samples = [prompt + generation for prompt, generation in zip(prompts, generations)]
+        rm_dataset = MyRMDataset(samples=samples)
+        rm_dataloader = DataLoader(
+            rm_dataset, 
+            shuffle=False, 
+            batch_size=self.params['rewards']['batch_size'], 
+            collate_fn=self.rm_collator)
 
-        avg_generations_lens = np.mean(generations_lens)
-        avg_rouge_scores = np.mean(rouge_scores)
+        rewards = []
+        with torch.no_grad():
+            for step, rm_batch in tqdm(enumerate(rm_dataloader), total=len(rm_dataloader)):
+                for x in rm_batch:
+                    rm_batch[x] = rm_batch[x].cuda()
+                rewards_batch = self.reward_model.get_reward(**rm_batch)
+                rewards.extend(rewards_batch)
 
-        print(f"Average generations lenght = {avg_generations_lens:+.2f}")
-        print(f"Average RougeLSum = {avg_rouge_scores:+.2f}")
-
+        rewards = np.array(rewards)
+        avg_ppl, avg_reward = np.nanmean(perplexities), np.mean(rewards)
+        dist_1, dist_2, dist_3 = distinctness(generations)
+        print(f"Perplexity: {avg_ppl:+.2f}")
+        print(f"Avg. Reward: {avg_reward:.2f}")
+        print(f"dist-1={dist_1:.3f}, dist-2={dist_2:.3f}, dist-3={dist_3:.3f}")
         if self.params['logging']['wandb_log']:
-            wandb.log({f'Evaluation/rel_scores_mean_over_num_samples': rel_scores_mean_over_num_samples}, step=step_num)
-            wandb.log({f'Evaluation/rel_scores_mean_over_num_sentences': rel_scores_mean_over_num_sentences}, step=step_num)
-            wandb.log({f'Evaluation/rel_correct_ratio': rel_correct_ratio}, step=step_num)
+            wandb.log({f'Evaluation/perplexity': avg_ppl}, step=step_num)
+            wandb.log({f'Evaluation/reward': avg_reward}, step=step_num)
+            wandb.log({f'Evaluation/Dist-1': dist_1}, step=step_num)
+            wandb.log({f'Evaluation/Dist-2': dist_2}, step=step_num)
+            wandb.log({f'Evaluation/Dist-3': dist_3}, step=step_num)
 
-            wandb.log({f'Evaluation/fact_scores_mean_over_num_samples': fact_scores_mean_over_num_samples}, step=step_num)
-            wandb.log({f'Evaluation/fact_scores_mean_over_num_sentences': fact_scores_mean_over_num_sentences}, step=step_num)
-            wandb.log({f'Evaluation/fact_correct_ratio': fact_correct_ratio}, step=step_num)
-
-            wandb.log({f'Evaluation/comp_scores_mean_over_num_samples': comp_scores_mean_over_num_samples}, step=step_num)
-
-            wandb.log({f'Evaluation/avg_len': avg_generations_lens}, step=step_num)
-            wandb.log({f'Evaluation/avg_RougeLSum': avg_rouge_scores}, step=step_num)
-
-        min_rel, max_rel, min_fact, max_fact, min_comp, max_comp = -0.3, 0.3, -0.5, 0.5, -0.3, 0.3
-        norm_rel = (rel_scores_mean_over_num_sentences - min_rel) / (max_rel - min_rel) 
-        norm_fact = (fact_scores_mean_over_num_sentences - min_fact) / (max_fact - min_fact)
-        norm_comp = (comp_scores_mean_over_num_samples - min_comp) / (max_comp - min_comp)
-        avg_score = (norm_rel + norm_fact + norm_comp) / 3
-        return avg_score
+        eval_file = Path(self.params['reward_dir']) / f"quark_eval_data_step_{step_num}.json"
+        with eval_file.open('a') as f:
+            for (prompt_quantile_data, prompt_data, generation_data, summary_data, reward_data, perplexity_data) in zip(prompts_quantile, prompts, generations, summaries, rewards, perplexities):
+                response_dict = {
+                    'prompt_quantile': prompt_quantile_data,
+                    'prompt': prompt_data,
+                    'generation': generation_data,
+                    'summary': summary_data,
+                    'reward': reward_data,
+                    'perplexity': perplexity_data
+                }
+                json.dump(response_dict, f)
+                f.write('\n')
 
 def main():
     # Set seed
@@ -548,18 +496,18 @@ def main():
     # resize token_embeddings associated to the newly added tokens
     weights = policy.model.get_input_embeddings().weight.detach().cpu().numpy()
     mean_weights, std_weights = np.mean(weights, axis=0), np.std(weights, axis=0)
-    new_inits = np.vstack([np.random.normal(loc=mean_weights, scale=std_weights) for _ in flattened_feedback_types])
+    new_inits = np.vstack([np.random.normal(loc=mean_weights, scale=std_weights) for _ in quantile_tokens])
 
     policy.model.resize_token_embeddings(len(tokenizer))
     with torch.no_grad():
         new_inits = torch.tensor(new_inits)
-        policy.model.get_input_embeddings().weight[-len(flattened_feedback_types):, :] = new_inits
+        policy.model.get_input_embeddings().weight[-len(quantile_tokens):, :] = new_inits
 
     if args['model']['policy_model']['load_state_dict']:
         state_dict = torch.load(args['model']['policy_model']['state_dict_path'])
-        policy.model.load_state_dict(state_dict)
+        policy.model.load_state_dict(state_dict["policy_model"])
 
-    generation_config = GenerationConfig(
+    train_generation_config = GenerationConfig(
         max_length = args["model"]["policy_model"]["train_generation_kwargs"]["max_length"],
         max_new_tokens = args["model"]["policy_model"]["train_generation_kwargs"]["max_new_tokens"],
         do_sample = args["model"]["policy_model"]["train_generation_kwargs"]["do_sample"], # False means greedy decoding
@@ -569,6 +517,20 @@ def main():
         top_p = args["model"]["policy_model"]["train_generation_kwargs"]["top_p"], # if set to float < 1, only the smallest set of most probable tokens with probabilities that add up to top-P or higher are kept for generation
         bad_words_ids = bad_words_ids, # List[List[int]] -> useful for Quark-based to avoid sampling of newly added tokens | list of list of tokens ids that are not allowed to be generated
         num_return_sequences = args["model"]["policy_model"]["train_generation_kwargs"]["num_return_sequences"], # may be interesting to sample many completions for which to collect feedback    
+        return_dict_in_generate = True,
+        pad_token_id = tokenizer.pad_token_id, # error if not passed...
+    )
+
+    eval_generation_config = GenerationConfig(
+        max_length = args["model"]["policy_model"]["eval_generation_kwargs"]["max_length"],
+        max_new_tokens = args["model"]["policy_model"]["eval_generation_kwargs"]["max_new_tokens"],
+        do_sample = args["model"]["policy_model"]["eval_generation_kwargs"]["do_sample"], # False means greedy decoding
+        num_beams = args["model"]["policy_model"]["eval_generation_kwargs"]["num_beams"], # no beam search
+        temperature = args["model"]["policy_model"]["eval_generation_kwargs"]["temperature"], 
+        top_k = args["model"]["policy_model"]["eval_generation_kwargs"]["top_k"], # number of highest prob. vocabulary tokens to keep for top-k filtering
+        top_p = args["model"]["policy_model"]["eval_generation_kwargs"]["top_p"], # if set to float < 1, only the smallest set of most probable tokens with probabilities that add up to top-P or higher are kept for generation
+        bad_words_ids = bad_words_ids, # List[List[int]] -> useful for Quark-based to avoid sampling of newly added tokens | list of list of tokens ids that are not allowed to be generated
+        num_return_sequences = args["model"]["policy_model"]["eval_generation_kwargs"]["num_return_sequences"], # may be interesting to sample many completions for which to collect feedback    
         return_dict_in_generate = True,
         pad_token_id = tokenizer.pad_token_id, # error if not passed...
     )
@@ -596,11 +558,6 @@ def main():
 
     # -------------- Load Sampling datasets and dataloaders --------------
     print(f'Loading data ...')
-
-    prompt_collator = QuarkTLDRSamplingPromptCollatorWithPadding(tokenizer=tokenizer, quantile_tokens=quantile_tokens)
-    def collate_fn_wrapper(batch, best_quantile=True, conditioning=True):
-        return prompt_collator(batch, best_quantile=best_quantile, conditioning=conditioning)
-
     splits = []
     if args['data']['train_split_name']:
         splits.append(args['data']['train_split_name'])
@@ -617,6 +574,11 @@ def main():
         remote=args['data']['remote'])
     
     sampling_train_dataset = sampling_datasets[args['data']['train_split_name']]
+
+    prompt_collator = QuarkTLDRSamplingPromptCollatorWithPadding(tokenizer=tokenizer, quantile_tokens=quantile_tokens)
+    def collate_fn_wrapper(batch, best_quantile=True, conditioning=True):
+        return prompt_collator(batch, best_quantile=best_quantile, conditioning=conditioning)
+    
     sampling_train_dataloader = DataLoader(
         dataset=sampling_train_dataset,
         batch_size=args['train']['sampling_batch_size_per_card'],
@@ -656,6 +618,10 @@ def main():
         num_training_steps=total_steps
     )
 
+    if args['model']['policy_model']['load_state_dict']:
+        optimizer.load_state_dict(state_dict["optimizer"])
+        scheduler.load_state_dict(state_dict["scheduler"])
+
     # -------------- Set up trainer --------------
     trainer = QuarkTrainer(
         params=args,
@@ -669,7 +635,8 @@ def main():
         sampling_dev_dataloader=sampling_dev_dataloader,
         optimizer=optimizer,
         scheduler=scheduler,
-        generation_config=generation_config,
+        train_generation_config=train_generation_config,
+        eval_generation_config=eval_generation_config,
     )
 
     steps = list(range(total_steps + 1))

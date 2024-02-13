@@ -1,3 +1,4 @@
+import random
 from datasets import load_dataset, DatasetDict
 from transformers import AutoTokenizer, DataCollatorWithPadding
 import torch
@@ -82,6 +83,7 @@ class TLDRSamplingDataset():
                 "prompt_attention_mask": prompt_dict["attention_mask"],
                 "summary": example["label"]}
 
+# to be modified... -> NLFTLDRSamplingPromptCollatorWithPadding
 class TLDRSamplingPromptCollatorWithPadding(object):
     def __init__(self, tokenizer: AutoTokenizer):
         self.tokenizer = tokenizer
@@ -160,7 +162,7 @@ class QuarkTLDRSamplingPromptCollatorWithPadding(object):
                 input_ids = [[self.best_quantile_id] + input_ids_batch for input_ids_batch in input_ids]
                 attention_mask = [[1] + attention_mask_batch for attention_mask_batch in attention_mask]
             else:
-                batch_size = len(input_input_ids)
+                batch_size = len(input_ids)
                 quantiles_idx = random.choices(range(self.num_quantiles), k=batch_size)
                 input_ids = [[self.quantile_tokens_ids[quantiles_idx[i]]] + input_ids[i] for i in range(batch_size)]
                 attention_mask = [[1] + attention_mask_batch for attention_mask_batch in attention_mask]

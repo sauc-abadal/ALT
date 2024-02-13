@@ -51,7 +51,7 @@ class NLFTrainingDataset():
         prompt = example["prompt"]
         response = example["response"]
         feedback = example["feedback"]
-        input_seq = self.feedback_prefix + " " + feedback + " " + self.prompt_prefix + " " prompt
+        input_seq = self.feedback_prefix + " " + feedback + " " + self.prompt_prefix + " "  + prompt
         output_seq = " " + response
         return {"prompt": prompt,               
                 "input_seq": input_seq,
@@ -89,7 +89,7 @@ class NLFTrainingSequenceCollatorWithPadding(object):
 
         return {
             "inputs": input_seqs_dict, 
-            "outputs": output_seqs_dict
+            "outputs": output_seqs_dict,
             "prompts": prompts, 
             "input_seqs": input_seqs,
             "output_seqs": output_seqs}
@@ -171,7 +171,7 @@ class QuarkTrainingSequenceCollatorWithPadding(object):
 
         return {
             "inputs": input_seqs_dict, 
-            "outputs": output_seqs_dict
+            "outputs": output_seqs_dict,
             "prompts": prompts, 
             "input_seqs": input_seqs,
             "output_seqs": output_seqs}

@@ -159,3 +159,17 @@ def get_tensorboard_logname(comment=""):
     log_dir = os.path.join(
         'runs', current_time + '_' + socket.gethostname() + comment)
     return log_dir
+
+def distinctness(generations):
+    unigrams, bigrams, trigrams = set(), set(), set()
+    total_words = 0
+    for gen in generations:
+        o = gen.split(' ')
+        total_words += len(o)
+        unigrams.update(o)
+        for i in range(len(o) - 1):
+            bigrams.add(o[i] + '_' + o[i + 1])
+        for i in range(len(o) - 2):
+            trigrams.add(o[i] + '_' + o[i + 1] + '_' + o[i + 2])
+
+    return len(unigrams) / total_words, len(bigrams) / total_words, len(trigrams) / total_words

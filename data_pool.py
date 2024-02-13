@@ -34,7 +34,7 @@ class NLFDataPool:
         self.prompts_pool.extend(prompts)
         self.responses_pool.extend(responses)
         self.feedbacks_labels.extend(feedbacks)
-        self.feedbacks_labels_pool.extend(feedbacks_labels_pool)
+        self.feedbacks_labels_pool.extend(feedbacks_labels)
         
     def get_data(self):
         """

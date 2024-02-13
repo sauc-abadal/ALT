@@ -39,7 +39,7 @@ class Policy:
                 bad_words_ids = None, # List[List[int]] -> useful for Quark-based to avoid sampling of newly added tokens | list of list of tokens ids that are not allowed to be generated
                 num_return_sequences = 1, # may be interesting to sample many completions for which to collect feedback    
                 return_dict_in_generate = True,
-                pad_token_id = tokenizer.pad_token_id, # error if not passed...
+                pad_token_id = self.tokenizer.pad_token_id, # error if not passed...
             )
 
         input_ids = input_ids.to(self.device)
