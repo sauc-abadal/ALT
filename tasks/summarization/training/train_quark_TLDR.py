@@ -7,7 +7,6 @@ from datetime import datetime
 from typing import Dict, List, Tuple, Optional, Union, Float
 from pathlib import Path
 import time
-import sys
 
 from tqdm import tqdm
 from transformers import AutoTokenizer, get_scheduler, DataCollatorWithPadding, GenerationConfig
