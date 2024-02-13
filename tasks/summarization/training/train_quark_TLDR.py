@@ -4,7 +4,7 @@ import argparse
 import yaml
 import json
 from datetime import datetime
-from typing import Dict, List, Tuple, Optional, Union, Float
+from typing import Dict, List, Tuple, Optional, Union
 from pathlib import Path
 import time
 
@@ -247,7 +247,7 @@ class QuarkTrainer:
         # --- SAVING ---
         self.save(step_num)
  
-    def loss(self, step_num, inputs_dict, outputs_dict) -> Tuple[torch.Tensor, Dict[str, Float]]:
+    def loss(self, step_num, inputs_dict, outputs_dict) -> Tuple[torch.Tensor, Dict[str, float]]:
 
         prompts_input_ids = inputs_dict["input_ids"]
         prompts_attention_mask = inputs_dict["attention_mask"]
@@ -300,7 +300,7 @@ class QuarkTrainer:
 
         return loss, stats
 
-    def record_step_stats(self, data) -> Dict[str, Float]:
+    def record_step_stats(self, data) -> Dict[str, float]:
         stats = {
             'loss/total': data['total_loss'].item(),
             'loss/kl': data['kl_loss'].item(),
