@@ -473,11 +473,11 @@ def main():
         tokenizer.pad_token_id = tokenizer.eos_token_id
     
     num_quantiles = args['train']['num_quantiles']
-    quantile_tokens =  [f"_TREE_TOKEN_{str(quantile_idx)}" for quantile_idx in range(num_quantiles)]
+    quantile_tokens =  [f"_QUANTILE_TOKEN_{str(quantile_idx)}" for quantile_idx in range(num_quantiles)]
 
     # add special reward quantile tokens to the tokenizer
     tokenizer.add_tokens(quantile_tokens, special_tokens=True)
-    bad_words_ids = [[tokenizer.convert_tokens_to_ids(quantile_token)] for quantile_token in quantile_tokens]
+    bad_words_ids = [tokenizer.convert_tokens_to_ids(quantile_token) for quantile_token in quantile_tokens]
 
     # -------------- Initialize Reference Policy --------------
     ref_policy = Policy(
@@ -600,11 +600,22 @@ def main():
     # -------------- Prepare Optimizer and Schedulers --------------
 
     # Freeze 70% of policy model backbone
+    unforzen_layers_ratio = args['train']['unfrozen_layers_ratio']
     layers = policy.model.transformer.h
     num_layers = len(layers)
-    num_unfrozen = int(0.3 * num_layers)
+    num_unfrozen = int(unforzen_layers_ratio * num_layers)
     for layer in layers[:-num_unfrozen]:
         layer.requires_grad_(False)
+
+    num_trainable_params = 0
+    num_non_trainable_params = 0
+    for param in policy.model.parameters():
+        num_params = torch.numel(param)
+        if param.requires_grad:
+            num_trainable_params += num_params
+        else:
+            num_non_trainable_params += num_params
+    print(f"Finetuning {num_trainable_params/1e6:.2f}/{(num_trainable_params + num_non_trainable_params)/1e6:.2f} parameters.")
 
     optimizer = torch.optim.Adam(policy.model.parameters(), lr=args['train']['lr'], eps = 1e-5)
     
@@ -638,7 +649,7 @@ def main():
         eval_generation_config=eval_generation_config,
     )
 
-    steps = list(range(total_steps + 1))
+    steps = list(range(1, total_steps + 1))
     steps = tqdm(steps)
     for step_num in steps:
         try:

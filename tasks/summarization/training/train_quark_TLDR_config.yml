@@ -50,6 +50,7 @@ train:
   seed: 42
   cuda_deterministic: True
   max_input_length: 1024
+  unforzen_layers_ratio: 0.3
 
 data:
   name_or_path: CarperAI/openai_summarize_tldr
