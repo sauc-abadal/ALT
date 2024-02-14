@@ -177,7 +177,7 @@ def main():
         with open(args['train']['state_file_path'], "w") as f:
             json.dump({}, f)
     state_file_path = args['train']['state_file_path'] 
-    load_state(state_file_path)
+    state_dict = load_state(state_file_path)
     if not state_dict["sampling_stage"]:
         state_dict["sampling_stage"] = 1
     sampling_stage = state_dict["sampling_stage"]
