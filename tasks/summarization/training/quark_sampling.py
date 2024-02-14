@@ -173,6 +173,9 @@ def main():
         json.dump(args, f, indent=2)
 
     # Load the state
+    if not args['train']['training_started']:
+        with open(args['train']['state_file_path'], "w") as f:
+            json.dump({}, f)
     state_file_path = args['train']['state_file_path'] 
     load_state(state_file_path)
     if not state_dict["sampling_stage"]:

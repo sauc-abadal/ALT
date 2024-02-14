@@ -51,7 +51,8 @@ train:
   cuda_deterministic: True
   max_input_length: 1024
   unforzen_layers_ratio: 0.3
-  state_file_path: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q/state
+  training_started: False
+  state_file_path: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q/state.json
 
 data:
   name_or_path: CarperAI/openai_summarize_tldr
