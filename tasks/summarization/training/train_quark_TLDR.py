@@ -1,3 +1,7 @@
+import sys
+sys.path.append("/cluster/project/sachan/sauc/nlf")
+print(sys.path)
+
 import logging
 import os
 import argparse
