@@ -51,6 +51,7 @@ train:
   cuda_deterministic: True
   max_input_length: 1024
   unforzen_layers_ratio: 0.3
+  state_file_path: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q/state
 
 data:
   name_or_path: CarperAI/openai_summarize_tldr
@@ -67,4 +68,4 @@ logging:
   log_interval: 100
   save_interval: 500
   eval_interval: 500
-  save_dir: /cluster/work/sachan/sauc/nlf/output/quark_TLDR_5q
+  save_dir: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q

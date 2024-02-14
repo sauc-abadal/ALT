@@ -140,7 +140,7 @@ class QuarkTrainer:
             # in subsequent sampling phases, use collate_fn that collates batches of data with reward quantile tokens
             collate_fn = lambda batch: self.collate_fn_wrapper(batch, best_quantile=True, conditioning=True)
         
-        self.train_dataloader.collate_fn = collate_fn
+        self.sampling_train_dataloader.collate_fn = collate_fn
 
         prompts, prompts_quantile, generations = [], [], []
         for i, batch in enumerate(tqdm(self.sampling_train_dataloader, total=len(self.sampling_train_dataloader), desc='Sampling from current policy')):
