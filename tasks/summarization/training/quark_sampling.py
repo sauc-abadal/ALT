@@ -160,6 +160,7 @@ def main():
         )
 
     # Set saving directories
+    args['save_dir'] = args['logging']['save_dir']
     args['sampling_dir'] = os.path.join(args['save_dir'], 'sampling')
     args['model_dir'] = os.path.join(args['save_dir'], 'model')
     print(f"Writing sampling data to output directory: {args['sampling_dir']}")
