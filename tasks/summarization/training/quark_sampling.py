@@ -123,7 +123,7 @@ class QuarkSampler:
                 rollouts = self.policy.sample(
                     input_ids=input_ids, 
                     attention_mask=attention_mask,
-                    generation_config=self.train_generation_config)
+                    generation_config=self.generation_config)
                 
                 prompts_quantile_batch = self.decode(tokenizer=self.policy.tokenizer, query_input_ids=input_ids, skip_special_tokens=False)
                 generations_batch = rollouts["generated_text"]
