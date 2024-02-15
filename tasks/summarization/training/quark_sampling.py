@@ -167,6 +167,7 @@ def main():
 
     # Load the state
     if args['first_iter']:
+        ensure_dir(args['train']['state_file_path'])
         with open(args['train']['state_file_path'], "w") as f:
             json.dump({}, f)
 
