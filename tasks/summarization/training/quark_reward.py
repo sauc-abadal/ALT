@@ -200,8 +200,6 @@ def main():
     rewarder.get_rewards(sampling_stage)
     if args['split'] == 'train':
         data_pool = rewarder.update_DataPool(sampling_stage)
-        import pdb
-        pdb.set_trace()
         datapool_save_dict = data_pool.serialize_to_dict(args['save_dir'])
         state_dict["data_pool"] = datapool_save_dict
         # Save the state
