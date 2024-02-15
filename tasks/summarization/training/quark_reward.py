@@ -182,7 +182,7 @@ def main():
         data_pool = None
 
     # -------------- Set up Rewarder --------------
-    trainer = QuarkRewarder(
+    rewarder = QuarkRewarder(
         params=args,
         reward_model=reward_model,
         reward_tokenizer=reward_tokenizer,
@@ -190,9 +190,9 @@ def main():
         data_pool=data_pool,
     )
 
-    trainer.get_rewards(sampling_stage)
+    rewarder.get_rewards(sampling_stage)
     if args['split'] == 'train':
-        data_pool = trainer.update_DataPool(sampling_stage)
+        data_pool = rewarder.update_DataPool(sampling_stage)
 
         state_dict["data_pool"] = data_pool
         # Save the state

@@ -166,8 +166,8 @@ def main():
         )
 
     # Load the state
+    ensure_dir(args['logging']['save_dir'])
     if args['first_iter']:
-        ensure_dir(args['train']['state_file_path'])
         with open(args['train']['state_file_path'], "w") as f:
             json.dump({}, f)
 
@@ -290,7 +290,7 @@ def main():
         print(f"Sampling Dev dataset loaded with {len(sampling_dataset)} samples | Sampling Dev dataloader with {len(sampling_dataloader)} batches")
     
     # -------------- Set up Sampler --------------
-    trainer = QuarkSampler(
+    sampler = QuarkSampler(
         params=args,
         policy=policy,
         quantile_tokens=quantile_tokens,
@@ -298,7 +298,7 @@ def main():
         generation_config=generation_config,
     )
 
-    trainer.sample(sampling_stage)
+    sampler.sample(sampling_stage)
 
 if __name__ == "__main__":
     main()

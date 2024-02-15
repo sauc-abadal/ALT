@@ -5,17 +5,29 @@
 #SBATCH --gpus=1
 #SBATCH --gres=gpumem:48g
 #SBATCH --mem-per-cpu=48000
-#SBATCH --time=2:00:00
+#SBATCH --time=4:00:00
 #SBATCH --output="output/quark_TLDR_5q.out"
 #SBATCH --open-mode=append
 
 module load eth_proxy
 
-# for i in range(1, freq_exploration):
-python tasks/summarization/training/quark_sampling.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter True --split train
-python tasks/summarization/training/quark_reward.py --config tasks/summarization/training/train_quark_TLDR_config.yml --split train
-python tasks/summarization/training/quark_train.py --config tasks/summarization/training/train_quark_TLDR_config.yml
-# eval 
-python tasks/summarization/training/quark_sampling.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter False --split valid
-python tasks/summarization/training/quark_reward.py --config tasks/summarization/training/train_quark_TLDR_config.yml --split valid
-python tasks/summarization/training/eval.py --config tasks/summarization/training/train_quark_TLDR_config.yml
+# Specify the number of iterations
+freq_exploration=4 
+
+for i in $(seq 1 $freq_exploration); do
+
+  # Conditional argument for first iteration
+  if [[ $i -eq 1 ]]; then
+    python tasks/summarization/training/quark_sampling.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter True --split train
+  else
+    python tasks/summarization/training/quark_sampling.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter False --split train
+  fi
+
+  python tasks/summarization/training/quark_reward.py --config tasks/summarization/training/train_quark_TLDR_config.yml --split train
+  python tasks/summarization/training/quark_train.py --config tasks/summarization/training/train_quark_TLDR_config.yml
+
+  # Evaluation (unchanged)
+  python tasks/summarization/training/quark_sampling.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter False --split valid
+  python tasks/summarization/training/quark_reward.py --config tasks/summarization/training/train_quark_TLDR_config.yml --split valid
+  python tasks/summarization/training/quark_eval.py --config tasks/summarization/training/train_quark_TLDR_config.yml
+done
