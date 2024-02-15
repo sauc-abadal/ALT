@@ -112,7 +112,7 @@ class QuarkSampler:
                 # in subsequent sampling phases, use collate_fn that collates batches of data with reward quantile tokens
                 collate_fn = lambda batch: self.collate_fn_wrapper(batch, best_quantile=True, conditioning=True)
             
-            self.sampling_train_dataloader.collate_fn = collate_fn
+            self.sampling_dataloader.collate_fn = collate_fn
 
         prompts, prompts_quantile, generations = [], [], []
         with torch.no_grad():
