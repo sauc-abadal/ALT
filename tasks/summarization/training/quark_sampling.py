@@ -212,7 +212,7 @@ def main():
 
     # add special reward quantile tokens to the tokenizer
     tokenizer.add_tokens(quantile_tokens, special_tokens=True)
-    bad_words_ids = [tokenizer.convert_tokens_to_ids(quantile_token) for quantile_token in quantile_tokens]
+    bad_words_ids = [[tokenizer.convert_tokens_to_ids(quantile_token)] for quantile_token in quantile_tokens]
 
     # -------------- Initialize Policy to be finetuned --------------
     policy = Policy(
