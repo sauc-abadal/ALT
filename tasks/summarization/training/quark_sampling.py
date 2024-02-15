@@ -256,7 +256,7 @@ def main():
     splits = []
     if args['data'][f"{args['split']}_split_name"]:
         splits.append(args['data'][f"{args['split']}_split_name"])
-
+    print(f"Splits: {splits}")
     sampling_dataset = TLDRSamplingDataset(
         local_or_remote_path=args['data']['name_or_path'],
         tokenizer=tokenizer,
@@ -264,7 +264,7 @@ def main():
         splits=splits,
         remote=args['data']['remote'])
     
-    print(sampling_dataset)
+    sampling_dataset = sampling_dataset.datasets[args['data'][f"{args['split']}_split_name"]]
 
     prompt_collator = QuarkTLDRSamplingPromptCollatorWithPadding(tokenizer=tokenizer, quantile_tokens=quantile_tokens)
     def collate_fn_wrapper(batch, best_quantile=True, conditioning=True):

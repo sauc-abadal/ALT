@@ -3,7 +3,7 @@
 #SBATCH -n 1
 #SBATCH --cpus-per-task=1
 #SBATCH --gpus=1
-#SBATCH --gres=gpumem:48g
+#SBATCH --gres=gpumem:30g
 #SBATCH --mem-per-cpu=48000
 #SBATCH --time=2:00:00
 #SBATCH --output="output/quark_sampling_TLDR_5q.out"
