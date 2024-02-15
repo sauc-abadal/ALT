@@ -156,7 +156,7 @@ class QuarkTLDRSamplingPromptCollatorWithPadding(object):
 
         if conditioning:
             input_ids = inputs["input_ids"]
-            attention_mask["attention_mask"]
+            attention_mask = inputs["attention_mask"]
             # preprend reward quantile token to prompt input_ids before left-padding
             if best_quantile:
                 input_ids = [[self.best_quantile_id] + input_ids_batch for input_ids_batch in input_ids]
