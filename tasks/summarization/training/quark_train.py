@@ -371,11 +371,16 @@ def main():
         scheduler=scheduler,
     )
 
+    sample_interval = args['train']['sample_interval']
+    steps_taken = 0
     steps = list(range(step_num, total_steps))
     steps = tqdm(steps)
     for step_num in steps:
+        if steps_taken == sample_interval:
+            break
         try:
             trainer.step(step_num)
+            steps_taken += 1
             state_dict["step_num"] += 1
         except Exception as e:
             print("There was an Exception while trying to perform trainer.step()!")

@@ -155,8 +155,8 @@ def main():
     # -------------- Initialize Reward Model --------------
     reward_model = GPTRewardModel(args['reward']['name_or_path'])
     if args['reward']['load_state_dict']:
-        state_dict = torch.load(args['reward']['state_dict_path'])
-        reward_model.load_state_dict(state_dict)
+        rm_state_dict = torch.load(args['reward']['state_dict_path'])
+        reward_model.load_state_dict(rm_state_dict)
         print("Reward Model correctly loaded!")
 
     max_length = args['reward']['max_length']
