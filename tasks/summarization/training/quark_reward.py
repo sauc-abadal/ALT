@@ -21,13 +21,16 @@ from tasks.summarization.models.reward import GPTRewardModel, MyRMDataCollator, 
 # load parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', required=True, help='path to config file')
+parser.add_argument('--first_iter', required=True, help='whether or not is the first sampling iteration')
 parser.add_argument('--split', required=True, help='sampling on train/valid split')
 args = parser.parse_args()
+first_iter = bool(args.first_iter)
 split = args.split
 
 # load yaml file
 with open(args.config) as f:
     args = yaml.safe_load(f)
+    args['first_iter'] = first_iter
     args['split'] = split
 
 class QuarkRewarder:
@@ -170,7 +173,7 @@ def main():
 
     if args['split'] == 'train':
         # -------------- Initialize DataPool --------------
-        if sampling_stage == 1:
+        if args['first_iter']:
             # Initialize new DataPool
             data_pool = QuarkDataPool(
                 reward_quantile_tokens=quantile_tokens, num_quantiles=num_quantiles
