@@ -49,7 +49,7 @@ class QuarkSampler:
         self.num_quantiles = params['train']['num_quantiles']
         
         self.policy = policy
-        self.policy.mdel.eval()
+        self.policy.model.eval()
         self.sampling_dataloader = sampling_dataloader
         self.generation_config = generation_config
 
