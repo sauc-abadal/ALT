@@ -168,7 +168,7 @@ def main():
     # Load the state
     state_file_path = args['train']['state_file_path'] 
     state_dict = load_state(state_file_path)
-    sampling_stage = state_dict["sampling_stage"]
+    sampling_stage = state_dict["sampling_stage"] - 1
     step_num = state_dict["step_num"]
 
     # Set saving directories

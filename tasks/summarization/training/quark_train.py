@@ -251,8 +251,8 @@ def main():
     state_file_path = args['train']['state_file_path'] 
     state_dict = load_state(state_file_path)
     if "step_num" not in state_dict:
-        state_dict["step_num"] = 1
-    sampling_stage = state_dict["sampling_stage"]
+        state_dict["step_num"] = 0
+    sampling_stage = state_dict["sampling_stage"] - 1
     step_num = state_dict["step_num"]
 
     # Set saving directories
@@ -366,7 +366,7 @@ def main():
         scheduler=scheduler,
     )
 
-    steps = list(range(step_num, total_steps + 1))
+    steps = list(range(step_num, total_steps))
     steps = tqdm(steps)
     for step_num in steps:
         try:
