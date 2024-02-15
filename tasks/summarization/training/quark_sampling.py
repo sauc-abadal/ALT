@@ -117,6 +117,8 @@ class QuarkSampler:
         prompts, prompts_quantile, generations = [], [], []
         with torch.no_grad():
             for i, batch in enumerate(tqdm(self.sampling_dataloader, total=len(self.sampling_dataloader), desc='Sampling from current policy')):
+                import pdb
+                pdb.set_trace()
                 input_ids, attention_mask = batch["inputs"]
                 prompts_batch = batch["prompts"]
 
