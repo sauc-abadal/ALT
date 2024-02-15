@@ -317,7 +317,12 @@ def main():
         print(f"Policy satate_dict correctly loaded from {last_ckp_path}.")
 
     # -------------- Initialize DataPool --------------
-    data_pool = state_dict["data_pool"]
+    # Load existing DataPool
+    datapool_load_dict = state_dict["data_pool"]
+    data_pool = QuarkDataPool(
+        reward_quantile_tokens=quantile_tokens, num_quantiles=num_quantiles
+    )
+    data_pool.load_from_dict(datapool_load_dict)
 
     # -------------- Prepare Optimizer and Schedulers --------------
 

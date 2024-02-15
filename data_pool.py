@@ -2,6 +2,7 @@ from typing import List, Tuple
 from copy import deepcopy
 from pathlib import Path
 import json
+import pickle
 
 class NLFDataPool:
     def __init__(self, num_feedback_labels: int):
@@ -139,3 +140,48 @@ class QuarkDataPool:
                 }
                 json.dump(response_dict, f)
                 f.write('\n')
+
+    def save_data_to_files(self, save_path):
+        # Save internal lists to separate files
+        with open(f"{save_path}/prompts_pool.pkl", "wb") as f:
+            pickle.dump(self.prompts_pool, f)
+        with open(f"{save_path}/responses_pool.pkl", "wb") as f:
+            pickle.dump(self.responses_pool, f)
+        with open(f"{save_path}/quantiles_pool.pkl", "wb") as f:
+            pickle.dump(self.quantiles_pool, f)
+    
+    def load_data_from_files(self, save_path):
+        # Load data from files and repopulate internal lists
+        with open(f"{save_path}/prompts_pool.pkl", "rb") as f:
+            self.prompts_pool = pickle.load(f)
+        with open(f"{save_path}/responses_pool.pkl", "rb") as f:
+            self.responses_pool = pickle.load(f)
+        with open(f"{save_path}/quantiles_pool.pkl", "rb") as f:
+            self.quantiles_pool = pickle.load(f)
+
+    def serialize_to_dict(self, save_path):
+        self.save_data_to_files(save_path)  # Ensure data is saved before storing references
+        state_dict = {
+            "data_pool": {
+                "reward_quantile_tokens": self.reward_quantile_tokens,
+                "num_quantiles": self.num_quantiles,
+                "data_file_paths": {
+                    "prompts": f"{save_path}/prompts_pool.pkl",
+                    "responses": f"{save_path}/responses_pool.pkl",
+                    "quantiles": f"{save_path}/quantiles_pool.pkl"
+                },
+            }
+        }
+        return state_dict
+
+    def load_from_dict(self, state_dict):
+        data_pool_info = state_dict["data_pool"]
+        self.reward_quantile_tokens = data_pool_info["reward_quantile_tokens"]
+        self.num_quantiles = data_pool_info["num_quantiles"]
+        data_files = data_pool_info["data_file_paths"]
+        self.prompts_pool = pickle.load(open(data_files["prompts"], "rb"))
+        self.responses_pool = pickle.load(open(data_files["responses"], "rb"))
+        self.quantiles_pool = pickle.load(open(data_files["quantiles"], "rb"))
+        self.load_data_from_files()  # Reload internal lists for completeness
+
+    

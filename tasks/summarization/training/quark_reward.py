@@ -68,7 +68,7 @@ class QuarkRewarder:
             rm_dataset, 
             shuffle=False, 
             drop_last=False,
-            batch_size=self.params['rewards']['batch_size'], 
+            batch_size=self.params['reward']['batch_size'], 
             collate_fn=self.rm_collator)
 
         rewards = []
@@ -180,7 +180,11 @@ def main():
             )
         else:
             # Load existing DataPool
-            data_pool = state_dict["data_pool"]
+            datapool_load_dict = state_dict["data_pool"]
+            data_pool = QuarkDataPool(
+                reward_quantile_tokens=quantile_tokens, num_quantiles=num_quantiles
+            )
+            data_pool.load_from_dict(datapool_load_dict)
     else:
         data_pool = None
 
@@ -197,7 +201,8 @@ def main():
     if args['split'] == 'train':
         data_pool = rewarder.update_DataPool(sampling_stage)
 
-        state_dict["data_pool"] = data_pool
+        datapool_save_dict = data_pool.serialize_to_dict(args['save_dir'])
+        state_dict["data_pool"] = datapool_save_dict
         # Save the state
         save_state(state_dict, state_file_path)
 
