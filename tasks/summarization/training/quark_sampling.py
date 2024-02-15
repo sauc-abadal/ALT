@@ -19,7 +19,7 @@ import wandb
 from utils import set_seed, ensure_dir, WANDB_API_KEY
 from tasks.summarization.models.policy import Policy
 from tasks.summarization.datasets.sampling_dataset_and_collator import TLDRSamplingDataset, QuarkTLDRSamplingPromptCollatorWithPadding
-from state import load_state
+from state import load_state, save_state
 
 # load parameters
 parser = argparse.ArgumentParser()
@@ -301,6 +301,9 @@ def main():
     )
 
     sampler.sample(sampling_stage)
+
+    state_dict["sampling_stage"] += 1
+    save_state(state_dict, state_file_path)
 
 if __name__ == "__main__":
     main()

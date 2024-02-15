@@ -12,3 +12,4 @@
 module load eth_proxy
 
 python tasks/summarization/training/quark_sampling.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter True --split train
+python tasks/summarization/training/quark_reward.py --config tasks/summarization/training/train_quark_TLDR_config.yml --split train
