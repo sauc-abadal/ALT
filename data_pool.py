@@ -47,9 +47,9 @@ class NLFDataPool:
         """
         return deepcopy(self.prompts_pool), deepcopy(self.responses_pool), deepcopy(self.feedbacks_pool)
 
-    def save_data_for_training_in_json(self, save_path, step_num):
+    def save_data_for_training_in_json(self, save_path, sampling_stage):
         # save tuples of (quantile_token, promp, response, score) in reward_file
-        reward_file = Path(save_path) / f"NLF_train_data_step_{step_num}.json"
+        reward_file = Path(save_path) / f"nlf_training_data_stage_{sampling_stage}.json"
         with reward_file.open('a') as f:
             for (feedback_data, prompt_data, response_data, feedback_label_data) in zip(self.feedbacks_pool, self.prompts_pool, self.responses_pool, self.feedbacks_labels_pool):
                 response_dict = {
@@ -126,9 +126,9 @@ class QuarkDataPool:
         """
         return deepcopy(self.prompts_pool), deepcopy(self.responses_pool), deepcopy(self.quantiles_pool)
 
-    def save_data_for_training_in_json(self, save_path, step_num):
+    def save_data_for_training_in_json(self, save_path, sampling_stage):
         # save tuples of (quantile_token, promp, response, score) in reward_file
-        reward_file = Path(save_path) / f"quark_train_data_step_{step_num}.json"
+        reward_file = Path(save_path) / f"quark_training_data_stage_{sampling_stage}.json"
         with reward_file.open('a') as f:
             for (quantile_data, prompt_data, response_data, score_data) in zip(self.quantiles_pool, self.prompts_pool, self.responses_pool, self.scores_pool):
                 response_dict = {

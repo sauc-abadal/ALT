@@ -1,8 +1,6 @@
 model:
   policy_model:
     name_or_path: CarperAI/openai_summarize_tldr_sft
-    load_state_dict: False
-    state_dict_path: None
     input_padding_side: left
     train_generation_kwargs:
       max_length: 2048
@@ -51,7 +49,6 @@ train:
   cuda_deterministic: True
   max_input_length: 1024
   unforzen_layers_ratio: 0.3
-  training_started: False
   state_file_path: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q/state.json
 
 data:

@@ -6,16 +6,14 @@ import os
 import argparse
 import yaml
 import json
-from datetime import datetime
 from typing import Dict, List, Tuple, Optional, Union
 from pathlib import Path
 
 from tqdm import tqdm
-from transformers import AutoTokenizer, get_scheduler, GenerationConfig
+from transformers import AutoTokenizer, GenerationConfig
 import torch
 import numpy as np
 from torch.utils.data import DataLoader
-import torch.nn.functional as F
 import wandb
 
 from utils import set_seed, ensure_dir, WANDB_API_KEY
@@ -26,11 +24,14 @@ from state import load_state, save_state
 # load parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', required=True, help='path to config file')
+parser.add_argument('--first_iter', required=True, help='whether or not is the first sampling iteration')
 args = parser.parse_args()
+first_iter = args.first_iter
 
 # load yaml file
 with open(args.config) as f:
     args = yaml.safe_load(f)
+    args['first_iter'] = first_iter
 
 class QuarkSampler:
     def __init__(self,
@@ -45,6 +46,7 @@ class QuarkSampler:
         self.num_quantiles = params['train']['num_quantiles']
         
         self.policy = policy
+        self.policy.mdel.eval()
         self.sampling_train_dataloader = sampling_train_dataloader
         self.train_generation_config = train_generation_config
 
@@ -159,12 +161,24 @@ def main():
             name=f"{args['logging']['run_name']}"
         )
 
+    # Load the state
+    if args['first_iter']:
+        with open(args['train']['state_file_path'], "w") as f:
+            json.dump({}, f)
+            
+    state_file_path = args['train']['state_file_path'] 
+    state_dict = load_state(state_file_path)
+    if "sampling_stage" not in state_dict:
+        state_dict["sampling_stage"] = 1
+    sampling_stage = state_dict["sampling_stage"]
+
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
     args['sampling_dir'] = os.path.join(args['save_dir'], 'sampling')
     ensure_dir(args['sampling_dir'])
     print(f"Writing sampling data to output directory: {args['sampling_dir']}")
-    if args['train']['training_started']:
+    if sampling_stage > 1:
+        # Loading an ongoing-training policy
         args['model_dir'] = os.path.join(args['save_dir'], 'model')
         ensure_dir(args['model_dir'])
         print(f"Loading policy model from directory: {args['model_dir']}")
@@ -172,16 +186,6 @@ def main():
     # Save the config file
     with open(os.path.join(args['save_dir'], 'args.json'), 'w') as f:
         json.dump(args, f, indent=2)
-
-    # Load the state
-    if not args['train']['training_started']:
-        with open(args['train']['state_file_path'], "w") as f:
-            json.dump({}, f)
-    state_file_path = args['train']['state_file_path'] 
-    state_dict = load_state(state_file_path)
-    if "sampling_stage" not in state_dict:
-        state_dict["sampling_stage"] = 1
-    sampling_stage = state_dict["sampling_stage"]
     
     print(f'Initializing models ...')
 
@@ -221,12 +225,12 @@ def main():
         policy.model.get_input_embeddings().weight[-len(quantile_tokens):, :] = new_inits
 
     if sampling_stage > 1:
-        last_ckpt = state_dict["last_ckpt"]
-        last_ckpt_path = f"{args['model_dir']}/ckpt_{last_ckpt}.pth"
-        print(f"Loading Policy satate_dict from {last_ckpt_path}.")
-        state_dict = torch.load(last_ckpt_path)
-        policy.model.load_state_dict(state_dict["policy_model"])
-        print(f"Policy satate_dict correctly loaded from {last_ckpt_path}.")
+        last_ckp = state_dict["last_ckp"]
+        last_ckp_path = f"{args['model_dir']}/ckpt_{last_ckp}.pth"
+        print(f"Loading Policy satate_dict from {last_ckp_path}.")
+        policy_state_dict = torch.load(last_ckp_path)["policy_model"]
+        policy.model.load_state_dict(policy_state_dict)
+        print(f"Policy satate_dict correctly loaded from {last_ckp_path}.")
 
     train_generation_config = GenerationConfig(
         max_length = args["model"]["policy_model"]["train_generation_kwargs"]["max_length"],
@@ -248,27 +252,27 @@ def main():
     if args['data']['train_split_name']:
         splits.append(args['data']['train_split_name'])
 
-    sampling_datasets = TLDRSamplingDataset(
+    sampling_dataset = TLDRSamplingDataset(
         local_or_remote_path=args['data']['name_or_path'],
         tokenizer=tokenizer,
         data_format=None,
         splits=splits,
         remote=args['data']['remote'])
     
-    sampling_train_dataset = sampling_datasets[args['data']['train_split_name']]
+    print(sampling_dataset)
 
     prompt_collator = QuarkTLDRSamplingPromptCollatorWithPadding(tokenizer=tokenizer, quantile_tokens=quantile_tokens)
     def collate_fn_wrapper(batch, best_quantile=True, conditioning=True):
         return prompt_collator(batch, best_quantile=best_quantile, conditioning=conditioning)
     
     sampling_train_dataloader = DataLoader(
-        dataset=sampling_train_dataset,
+        dataset=sampling_dataset,
         batch_size=args['train']['sampling_batch_size_per_card'],
         shuffle=True,
         drop_last=True,
         collate_fn=lambda batch: collate_fn_wrapper(batch, best_quantile=True, conditioning=False)
     )
-    print(f"Sampling Train dataset loaded with {len(sampling_train_dataset)} samples | Sampling Train dataloader with {len(sampling_train_dataloader)} batches")
+    print(f"Sampling Train dataset loaded with {len(sampling_dataset)} samples | Sampling Train dataloader with {len(sampling_train_dataloader)} batches")
 
     # -------------- Set up Sampler --------------
     trainer = QuarkSampler(
