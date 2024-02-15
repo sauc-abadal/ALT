@@ -162,12 +162,13 @@ def main():
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
     args['sampling_dir'] = os.path.join(args['save_dir'], 'sampling')
-    args['model_dir'] = os.path.join(args['save_dir'], 'model')
+    ensure_dir(args['sampling_dir'])
     print(f"Writing sampling data to output directory: {args['sampling_dir']}")
-    print(f"Loading policy model from directory: {args['model_dir']}")
-    for dir in [args['sampling_dir'], args['model_dir']]:
-        ensure_dir(dir)
-
+    if args['train']['training_started']:
+        args['model_dir'] = os.path.join(args['save_dir'], 'model')
+        ensure_dir(args['model_dir'])
+        print(f"Loading policy model from directory: {args['model_dir']}")
+        
     # Save the config file
     with open(os.path.join(args['save_dir'], 'args.json'), 'w') as f:
         json.dump(args, f, indent=2)
@@ -178,7 +179,7 @@ def main():
             json.dump({}, f)
     state_file_path = args['train']['state_file_path'] 
     state_dict = load_state(state_file_path)
-    if not state_dict["sampling_stage"]:
+    if "sampling_stage" not in state_dict:
         state_dict["sampling_stage"] = 1
     sampling_stage = state_dict["sampling_stage"]
     
