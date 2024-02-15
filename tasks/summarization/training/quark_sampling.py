@@ -19,27 +19,30 @@ import wandb
 from utils import set_seed, ensure_dir, WANDB_API_KEY
 from tasks.summarization.models.policy import Policy
 from tasks.summarization.datasets.sampling_dataset_and_collator import TLDRSamplingDataset, QuarkTLDRSamplingPromptCollatorWithPadding
-from state import load_state, save_state
+from state import load_state
 
 # load parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', required=True, help='path to config file')
 parser.add_argument('--first_iter', required=True, help='whether or not is the first sampling iteration')
+parser.add_argument('--split', required=True, help='sampling on train/valid split')
 args = parser.parse_args()
-first_iter = args.first_iter
+first_iter = bool(args.first_iter)
+split = args.split
 
 # load yaml file
 with open(args.config) as f:
     args = yaml.safe_load(f)
     args['first_iter'] = first_iter
+    args['split'] = split
 
 class QuarkSampler:
     def __init__(self,
                  params: dict,
                  policy: Policy,
                  quantile_tokens: List[str],
-                 sampling_train_dataloader: DataLoader,
-                 train_generation_config: GenerationConfig,
+                 sampling_dataloader: DataLoader,
+                 generation_config: GenerationConfig,
                  ) -> None:
         
         self.params = params
@@ -47,8 +50,8 @@ class QuarkSampler:
         
         self.policy = policy
         self.policy.mdel.eval()
-        self.sampling_train_dataloader = sampling_train_dataloader
-        self.train_generation_config = train_generation_config
+        self.sampling_dataloader = sampling_dataloader
+        self.generation_config = generation_config
 
         self.quantile_tokens = quantile_tokens
         self.best_quantile_token = self.quantile_tokens[0]
@@ -99,20 +102,21 @@ class QuarkSampler:
         return (prompts, generations)
 
     def sample(self, sampling_stage) -> None:        
-        print(f"[Sampling stage {sampling_stage}] Sampling ...")
+        print(f"[Sampling ({self.params['split']}) stage {sampling_stage}] Sampling ...")
 
-        if sampling_stage == 1:
-            # in the 1st sampling phase, use collate_fn that collated batches of data without reward quantile tokens
-            collate_fn = lambda batch: self.collate_fn_wrapper(batch, best_quantile=True, conditioning=False)     
-        else:
-            # in subsequent sampling phases, use collate_fn that collates batches of data with reward quantile tokens
-            collate_fn = lambda batch: self.collate_fn_wrapper(batch, best_quantile=True, conditioning=True)
-        
-        self.sampling_train_dataloader.collate_fn = collate_fn
+        if self.params['split'] == 'train':
+            if sampling_stage == 1:
+                # in the 1st sampling phase, use collate_fn that collated batches of data without reward quantile tokens
+                collate_fn = lambda batch: self.collate_fn_wrapper(batch, best_quantile=True, conditioning=False)     
+            else:
+                # in subsequent sampling phases, use collate_fn that collates batches of data with reward quantile tokens
+                collate_fn = lambda batch: self.collate_fn_wrapper(batch, best_quantile=True, conditioning=True)
+            
+            self.sampling_train_dataloader.collate_fn = collate_fn
 
         prompts, prompts_quantile, generations = [], [], []
         with torch.no_grad():
-            for i, batch in enumerate(tqdm(self.sampling_train_dataloader, total=len(self.sampling_train_dataloader), desc='Sampling from current policy')):
+            for i, batch in enumerate(tqdm(self.sampling_dataloader, total=len(self.sampling_dataloader), desc='Sampling from current policy')):
                 input_ids, attention_mask = batch["inputs"]
                 prompts_batch = batch["prompts"]
 
@@ -129,7 +133,7 @@ class QuarkSampler:
                 prompts_quantile.extend(prompts_quantile_batch)
 
         # save sampling data in a json file 
-        sampling_file = Path(self.params['sampling_dir']) / f"quark_sampling_data_stage_{sampling_stage}.json"
+        sampling_file = Path(self.params['sampling_dir']) / f"quark_sampling_data_{self.params['split']}_stage_{sampling_stage}.json"
         with sampling_file.open('w') as f:
             for (prompt_quantile_data, prompt_data, generation_data) in zip(prompts_quantile, prompts, generations):
                 response_dict = {
@@ -165,7 +169,7 @@ def main():
     if args['first_iter']:
         with open(args['train']['state_file_path'], "w") as f:
             json.dump({}, f)
-            
+
     state_file_path = args['train']['state_file_path'] 
     state_dict = load_state(state_file_path)
     if "sampling_stage" not in state_dict:
@@ -232,16 +236,16 @@ def main():
         policy.model.load_state_dict(policy_state_dict)
         print(f"Policy satate_dict correctly loaded from {last_ckp_path}.")
 
-    train_generation_config = GenerationConfig(
-        max_length = args["model"]["policy_model"]["train_generation_kwargs"]["max_length"],
-        max_new_tokens = args["model"]["policy_model"]["train_generation_kwargs"]["max_new_tokens"],
-        do_sample = args["model"]["policy_model"]["train_generation_kwargs"]["do_sample"], # False means greedy decoding
-        num_beams = args["model"]["policy_model"]["train_generation_kwargs"]["num_beams"], # no beam search
-        temperature = args["model"]["policy_model"]["train_generation_kwargs"]["temperature"], 
-        top_k = args["model"]["policy_model"]["train_generation_kwargs"]["top_k"], # number of highest prob. vocabulary tokens to keep for top-k filtering
-        top_p = args["model"]["policy_model"]["train_generation_kwargs"]["top_p"], # if set to float < 1, only the smallest set of most probable tokens with probabilities that add up to top-P or higher are kept for generation
+    generation_config = GenerationConfig(
+        max_length = args["model"]["policy_model"][f"{args['split']}_generation_kwargs"]["max_length"],
+        max_new_tokens = args["model"]["policy_model"][f"{args['split']}_generation_kwargs"]["max_new_tokens"],
+        do_sample = args["model"]["policy_model"][f"{args['split']}_generation_kwargs"]["do_sample"], # False means greedy decoding
+        num_beams = args["model"]["policy_model"][f"{args['split']}_generation_kwargs"]["num_beams"], # no beam search
+        temperature = args["model"]["policy_model"][f"{args['split']}_generation_kwargs"]["temperature"], 
+        top_k = args["model"]["policy_model"][f"{args['split']}_generation_kwargs"]["top_k"], # number of highest prob. vocabulary tokens to keep for top-k filtering
+        top_p = args["model"]["policy_model"][f"{args['split']}_generation_kwargs"]["top_p"], # if set to float < 1, only the smallest set of most probable tokens with probabilities that add up to top-P or higher are kept for generation
         bad_words_ids = bad_words_ids, # List[List[int]] -> useful for Quark-based to avoid sampling of newly added tokens | list of list of tokens ids that are not allowed to be generated
-        num_return_sequences = args["model"]["policy_model"]["train_generation_kwargs"]["num_return_sequences"], # may be interesting to sample many completions for which to collect feedback    
+        num_return_sequences = args["model"]["policy_model"][f"{args['split']}_generation_kwargs"]["num_return_sequences"], # may be interesting to sample many completions for which to collect feedback    
         return_dict_in_generate = True,
         pad_token_id = tokenizer.pad_token_id, # error if not passed...
     )
@@ -249,8 +253,8 @@ def main():
     # -------------- Load Sampling datasets and dataloaders --------------
     print(f'Loading data ...')
     splits = []
-    if args['data']['train_split_name']:
-        splits.append(args['data']['train_split_name'])
+    if args['data'][f"{args['split']}_split_name"]:
+        splits.append(args['data'][f"{args['split']}_split_name"])
 
     sampling_dataset = TLDRSamplingDataset(
         local_or_remote_path=args['data']['name_or_path'],
@@ -265,29 +269,35 @@ def main():
     def collate_fn_wrapper(batch, best_quantile=True, conditioning=True):
         return prompt_collator(batch, best_quantile=best_quantile, conditioning=conditioning)
     
-    sampling_train_dataloader = DataLoader(
-        dataset=sampling_dataset,
-        batch_size=args['train']['sampling_batch_size_per_card'],
-        shuffle=True,
-        drop_last=True,
-        collate_fn=lambda batch: collate_fn_wrapper(batch, best_quantile=True, conditioning=False)
-    )
-    print(f"Sampling Train dataset loaded with {len(sampling_dataset)} samples | Sampling Train dataloader with {len(sampling_train_dataloader)} batches")
-
+    if args['split'] == "train":
+        sampling_dataloader = DataLoader(
+            dataset=sampling_dataset,
+            batch_size=args['train']['sampling_batch_size_per_card'],
+            shuffle=True,
+            drop_last=True,
+            collate_fn=lambda batch: collate_fn_wrapper(batch, best_quantile=True, conditioning=False)
+        )
+        print(f"Sampling Train dataset loaded with {len(sampling_dataset)} samples | Sampling Train dataloader with {len(sampling_dataloader)} batches")
+    else:
+        sampling_dataloader = DataLoader(
+            dataset=sampling_dataset,
+            batch_size=args['train']['sampling_batch_size_per_card'],
+            shuffle=False,
+            drop_last=False,
+            collate_fn=lambda batch: collate_fn_wrapper(batch, best_quantile=True, conditioning=True)
+        )
+        print(f"Sampling Dev dataset loaded with {len(sampling_dataset)} samples | Sampling Dev dataloader with {len(sampling_dataloader)} batches")
+    
     # -------------- Set up Sampler --------------
     trainer = QuarkSampler(
         params=args,
         policy=policy,
         quantile_tokens=quantile_tokens,
-        sampling_train_dataloader=sampling_train_dataloader,
-        train_generation_config=train_generation_config,
+        sampling_dataloader=sampling_dataloader,
+        generation_config=generation_config,
     )
 
     trainer.sample(sampling_stage)
-
-    state_dict["sampling_stage"] += 1
-    # Save the state
-    save_state(state_dict, state_file_path)
 
 if __name__ == "__main__":
     main()

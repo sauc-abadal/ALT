@@ -21,11 +21,14 @@ from tasks.summarization.models.reward import GPTRewardModel, MyRMDataCollator, 
 # load parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', required=True, help='path to config file')
+parser.add_argument('--split', required=True, help='sampling on train/valid split')
 args = parser.parse_args()
+split = args.split
 
 # load yaml file
 with open(args.config) as f:
     args = yaml.safe_load(f)
+    args['split'] = split
 
 class QuarkRewarder:
     def __init__(self,
@@ -44,7 +47,7 @@ class QuarkRewarder:
         self.data_pool = data_pool
 
     def get_rewards(self, sampling_stage) -> None:
-        print(f"[Sampling stage {sampling_stage}] Computing rewards ...")
+        print(f"[Sampling stage {sampling_stage} ({self.params['split']})] Computing rewards ...")
 
         samples = []
         with open(self.sampling_file, 'r') as input_file:
@@ -84,7 +87,7 @@ class QuarkRewarder:
             out_file.write('\n'.join(lines))
     
     def update_DataPool(self, sampling_stage) -> QuarkDataPool:
-        print(f"[Sampling stage {sampling_stage}] Updating DataPool ...")
+        print(f"[Sampling stage {sampling_stage} ({self.params['split']})] Updating DataPool ...")
         prompts, generations, rewards = [], [], []
         with open(self.sampling_file, 'r') as input_file:
             lines = input_file.readlines()
@@ -163,17 +166,20 @@ def main():
     if args['reward']['half']:
         reward_model.half()
 
-    sampling_file = f"{args['sampling_dir']}/quark_sampling_data_stage_{sampling_stage}.json"
+    sampling_file = f"{args['sampling_dir']}/quark_sampling_data_{args['split']}_stage_{sampling_stage}.json"
 
-    # -------------- Initialize DataPool --------------
-    if sampling_stage == 1:
-        # Initialize new DataPool
-        data_pool = QuarkDataPool(
-            reward_quantile_tokens=quantile_tokens, num_quantiles=num_quantiles
-        )
+    if args['split'] == 'train':
+        # -------------- Initialize DataPool --------------
+        if sampling_stage == 1:
+            # Initialize new DataPool
+            data_pool = QuarkDataPool(
+                reward_quantile_tokens=quantile_tokens, num_quantiles=num_quantiles
+            )
+        else:
+            # Load existing DataPool
+            data_pool = state_dict["data_pool"]
     else:
-        # Load existing DataPool
-        data_pool = state_dict["data_pool"]
+        data_pool = None
 
     # -------------- Set up Rewarder --------------
     trainer = QuarkRewarder(
@@ -185,11 +191,12 @@ def main():
     )
 
     trainer.get_rewards(sampling_stage)
-    data_pool = trainer.update_DataPool(sampling_stage)
+    if args['split'] == 'train':
+        data_pool = trainer.update_DataPool(sampling_stage)
 
-    state_dict["data_pool"] = data_pool
-    # Save the state
-    save_state(state_dict, state_file_path)
+        state_dict["data_pool"] = data_pool
+        # Save the state
+        save_state(state_dict, state_file_path)
 
 if __name__ == "__main__":
     main()
