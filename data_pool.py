@@ -163,8 +163,6 @@ class QuarkDataPool:
         self.save_data_to_files(save_path)  # Ensure data is saved before storing references
         state_dict = {
             "data_pool": {
-                "reward_quantile_tokens": self.reward_quantile_tokens,
-                "num_quantiles": self.num_quantiles,
                 "data_file_paths": {
                     "prompts": f"{save_path}/prompts_pool.pkl",
                     "responses": f"{save_path}/responses_pool.pkl",
@@ -176,8 +174,6 @@ class QuarkDataPool:
 
     def load_from_dict(self, state_dict):
         data_pool_info = state_dict["data_pool"]
-        self.reward_quantile_tokens = data_pool_info["reward_quantile_tokens"]
-        self.num_quantiles = data_pool_info["num_quantiles"]
         data_files = data_pool_info["data_file_paths"]
         self.prompts_pool = pickle.load(open(data_files["prompts"], "rb"))
         self.responses_pool = pickle.load(open(data_files["responses"], "rb"))
