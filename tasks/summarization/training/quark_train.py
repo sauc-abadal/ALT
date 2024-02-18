@@ -347,7 +347,7 @@ def main():
     total_steps = ceil_div(args['train']['total_episodes'], args['train']['training_batch_size_per_card'])
     
     # Initialize new Optimizer and Scheduler
-    optimizer = torch.optim.Adam(policy.model.parameters(), lr=args['train']['lr'], eps = 1e-5)
+    optimizer = torch.optim.Adam(policy.model.parameters(), lr=float(args['train']['lr']), eps = 1e-5)
     scheduler = get_scheduler(
         name='linear',
         optimizer=optimizer,
