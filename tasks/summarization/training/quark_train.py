@@ -62,7 +62,7 @@ class QuarkTrainer:
         training_dataset = QuarkTrainingDataset(data_pool=self.data_pool, tokenizer=self.policy.tokenizer)
         training_seq_collator = QuarkTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
         self.training_dataloader = DataLoader(
-            dataset=training_dataset,
+            dataset=training_dataset.dataset["train"],
             batch_size=self.params['train']['training_batch_size_per_card'],
             shuffle=True,
             drop_last=True,
@@ -93,7 +93,7 @@ class QuarkTrainer:
         #       [True,  True, False,  True, True, True, True, True]
         #       [False, True,  True,  True, True, True, True, True]
         input_ids = input_ids[mask].reshape(batch_size, -1)
-        attention_mask = attention_mask.reshape(batch_size, -1)
+        attention_mask = attention_mask[mask].reshape(batch_size, -1)
         return (input_ids, attention_mask)
         
     def decode(self, 
@@ -114,7 +114,7 @@ class QuarkTrainer:
 
         try:
             batch = next(self.training_sampler) # dictionary with keys "inputs", "outputs", "prompts", "input_seqs", "output_seqs"
-            assert len(batch[0]) == self.params['train']['training_batch_size_per_card'], 'insufficent batch'
+            assert len(batch["inputs"]["input_ids"]) == self.params['train']['training_batch_size_per_card'], 'insufficent batch'
 
         except (StopIteration, AssertionError):
             self.training_sampler = iter(self.training_dataloader)  # reset iteration to the beginning of data
@@ -162,7 +162,7 @@ class QuarkTrainer:
         generated_entropy = outputs["generated_entropy"]
         lm_loss = outputs["lm_loss"]
 
-        generated_logits = generated_logits[:, :, :-len(self.num_quantiles)]
+        generated_logits = generated_logits[:, :, :-self.num_quantiles]
 
         masks = generations_attention_mask.to(self.policy.device)
 
@@ -252,7 +252,7 @@ def main():
     state_dict = load_state(state_file_path)
     if "step_num" not in state_dict:
         state_dict["step_num"] = 0
-    sampling_stage = state_dict["sampling_stage"] - 1
+    sampling_stage = state_dict["sampling_stage"] - 1 # training is occurring in the current sampling stage, despite the variable bein already incremented after sampling
     step_num = state_dict["step_num"]
 
     # Set saving directories
@@ -279,7 +279,7 @@ def main():
         tokenizer.pad_token_id = tokenizer.eos_token_id
     
     num_quantiles = args['train']['num_quantiles']
-    quantile_tokens =  [f"_QUANTILE_TOKEN_{str(quantile_idx)}" for quantile_idx in range(num_quantiles)]
+    quantile_tokens =  [f"_QUANTILE_TOKEN_{str(quantile_idx)}_" for quantile_idx in range(num_quantiles)]
 
     # add special reward quantile tokens to the tokenizer
     tokenizer.add_tokens(quantile_tokens, special_tokens=True)
@@ -327,10 +327,10 @@ def main():
     # -------------- Prepare Optimizer and Schedulers --------------
 
     # Freeze 70% of policy model backbone
-    unforzen_layers_ratio = args['train']['unfrozen_layers_ratio']
+    unfrozen_layers_ratio = args['train']['unfrozen_layers_ratio']
     layers = policy.model.transformer.h
     num_layers = len(layers)
-    num_unfrozen = int(unforzen_layers_ratio * num_layers)
+    num_unfrozen = int(unfrozen_layers_ratio * num_layers)
     for layer in layers[:-num_unfrozen]:
         layer.requires_grad_(False)
 
@@ -342,7 +342,7 @@ def main():
             num_trainable_params += num_params
         else:
             num_non_trainable_params += num_params
-    print(f"Finetuning {num_trainable_params/1e6:.2f}/{(num_trainable_params + num_non_trainable_params)/1e6:.2f} parameters.")
+    print(f"Finetuning {num_trainable_params/1e9:.2f}/{(num_trainable_params + num_non_trainable_params)/1e9:.2f}B parameters.")
 
     total_steps = ceil_div(args['train']['total_episodes'], args['train']['training_batch_size_per_card'])
     

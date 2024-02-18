@@ -3,16 +3,16 @@
 #SBATCH -n 1
 #SBATCH --cpus-per-task=1
 #SBATCH --gpus=1
-#SBATCH --gres=gpumem:48g
+#SBATCH --gres=gpumem:60g
 #SBATCH --mem-per-cpu=48000
 #SBATCH --time=4:00:00
-#SBATCH --output="output/quark_TLDR_5q.out"
+#SBATCH --output="output/quark_TLDR_5q_v0.out"
 #SBATCH --open-mode=append
 
 module load eth_proxy
 
 # Specify the number of iterations
-freq_exploration=4 
+freq_exploration=2 
 
 for i in $(seq 1 $freq_exploration); do
 
@@ -26,8 +26,8 @@ for i in $(seq 1 $freq_exploration); do
   python tasks/summarization/training/quark_reward.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter True --split train
   python tasks/summarization/training/quark_train.py --config tasks/summarization/training/train_quark_TLDR_config.yml
 
-  # Evaluation (unchanged)
-  python tasks/summarization/training/quark_sampling.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter False --split valid
-  python tasks/summarization/training/quark_reward.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter False --split valid
-  python tasks/summarization/training/quark_eval.py --config tasks/summarization/training/train_quark_TLDR_config.yml
+  # # Evaluation (unchanged)
+  # python tasks/summarization/training/quark_sampling.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter False --split valid
+  # python tasks/summarization/training/quark_reward.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter False --split valid
+  # python tasks/summarization/training/quark_eval.py --config tasks/summarization/training/train_quark_TLDR_config.yml
 done

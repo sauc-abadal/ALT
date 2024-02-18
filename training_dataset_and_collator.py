@@ -113,7 +113,7 @@ class QuarkTrainingDataset():
             "quantile_token": quantiles
         }
         train_dataset = Dataset.from_dict(data_dict)
-        raw_dataset = DatasetDict({"train:": train_dataset}) 
+        raw_dataset = DatasetDict({"train": train_dataset}) 
         self.tokenizer = tokenizer
 
         self.dataset = raw_dataset.map(self.remove_leading_and_trailing_spaces, batched=False)
