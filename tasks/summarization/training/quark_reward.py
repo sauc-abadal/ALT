@@ -113,6 +113,7 @@ class QuarkRewarder:
         return self.data_pool
 
 def main():
+    print("############### quark_reward.py ###############")
     # Set seed
     set_seed(
         seed=args['train']['seed'], 
@@ -136,6 +137,7 @@ def main():
     state_file_path = args['train']['state_file_path'] 
     state_dict = load_state(state_file_path)
     sampling_stage = state_dict["sampling_stage"] - 1
+    print(f"state_dict loaded: {state_dict}")
 
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
@@ -170,6 +172,7 @@ def main():
         reward_model.half()
 
     sampling_file = f"{args['sampling_dir']}/quark_sampling_data_{args['split']}_stage_{sampling_stage}.json"
+    print(f"Reading sampling_file from: {sampling_file}")
 
     if args['split'] == 'train':
         # -------------- Initialize DataPool --------------
@@ -178,6 +181,7 @@ def main():
             data_pool = QuarkDataPool(
                 reward_quantile_tokens=quantile_tokens, num_quantiles=num_quantiles
             )
+            print("New data_pool initialized.")
         else:
             # Load existing DataPool
             datapool_load_dict = state_dict["data_pool"]
@@ -185,8 +189,10 @@ def main():
                 reward_quantile_tokens=quantile_tokens, num_quantiles=num_quantiles
             )
             data_pool.load_from_dict(datapool_load_dict)
+            print("Existing data_pool correctly loaded.")
     else:
         data_pool = None
+        print("(valid) data_pool set to None.")
 
     # -------------- Set up Rewarder --------------
     rewarder = QuarkRewarder(
@@ -200,10 +206,13 @@ def main():
     rewarder.get_rewards(sampling_stage)
     if args['split'] == 'train':
         data_pool = rewarder.update_DataPool(sampling_stage)
+        print("data_pool correctly updated!")
         datapool_save_dict = data_pool.serialize_to_dict(args['save_dir'])
+        print("data_pool correctly serialized!")
         state_dict["data_pool"] = datapool_save_dict
         # Save the state
         save_state(state_dict, state_file_path)
+        print(f"state_dict saved: {state_dict}")
 
 if __name__ == "__main__":
     main()

@@ -145,6 +145,7 @@ class QuarkSampler:
                 f.write('\n')
 
 def main():
+    print("############### quark_sampling.py ###############")
     # Set seed
     set_seed(
         seed=args['train']['seed'], 
@@ -176,6 +177,7 @@ def main():
     if "sampling_stage" not in state_dict:
         state_dict["sampling_stage"] = 1
     sampling_stage = state_dict["sampling_stage"]
+    print(f"state_dict loaded: {state_dict}")
 
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
@@ -302,6 +304,7 @@ def main():
 
     state_dict["sampling_stage"] += 1
     save_state(state_dict, state_file_path)
+    print(f"state_dict saved: {state_dict}")
 
 if __name__ == "__main__":
     main()

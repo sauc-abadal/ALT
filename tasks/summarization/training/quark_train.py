@@ -227,6 +227,7 @@ class QuarkTrainer:
         print(f"[step {step_num}] | Model checkpoint saved!")
 
 def main():
+    print("############### quark_train.py ###############")
     # Set seed
     set_seed(
         seed=args['train']['seed'], 
@@ -254,6 +255,7 @@ def main():
         state_dict["step_num"] = 0
     sampling_stage = state_dict["sampling_stage"] - 1 # training is occurring in the current sampling stage, despite the variable bein already incremented after sampling
     step_num = state_dict["step_num"]
+    print(f"state_dict loaded: {state_dict}")
 
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
@@ -290,6 +292,7 @@ def main():
         device=device,
         tokenizer=tokenizer
     )
+    print(f"Reference policy loaded to {device}.")
 
     # -------------- Initialize Policy to be finetuned --------------
     policy = Policy(
@@ -297,6 +300,7 @@ def main():
         device=device,
         tokenizer=tokenizer
     )
+    print(f"Policy correctly loaded to {device}.")
     # resize token_embeddings associated to the newly added tokens
     weights = policy.model.get_input_embeddings().weight.detach().cpu().numpy()
     mean_weights, std_weights = np.mean(weights, axis=0), np.std(weights, axis=0)
@@ -323,6 +327,7 @@ def main():
         reward_quantile_tokens=quantile_tokens, num_quantiles=num_quantiles
     )
     data_pool.load_from_dict(datapool_load_dict)
+    print("Existing data_pool correctly loaded.")
 
     # -------------- Prepare Optimizer and Schedulers --------------
 
@@ -391,6 +396,7 @@ def main():
     trainer.save(step_num)
     state_dict["last_ckpt"] = step_num
     save_state(state_dict, state_file_path)
+    print(f"state_dict saved: {state_dict}")
 
 if __name__ == "__main__":
     main()
