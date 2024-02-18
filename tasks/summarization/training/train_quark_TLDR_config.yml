@@ -48,7 +48,7 @@ train:
   seed: 42
   cuda_deterministic: True
   max_input_length: 1024
-  unforzen_layers_ratio: 0.3
+  unfrozen_layers_ratio: 0.3
   state_file_path: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q/state.json
 
 data:
