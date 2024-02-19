@@ -11,7 +11,7 @@ model:
       top_k: 50
       top_p: 1.0
       num_return_sequences: 1
-    eval_generation_kwargs:
+    valid_generation_kwargs:
       max_length: 2048
       max_new_tokens: 256
       do_sample: False
