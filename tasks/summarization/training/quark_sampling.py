@@ -242,7 +242,7 @@ def main():
 
     if sampling_stage > 1:
         last_ckp = state_dict["last_ckp"]
-        last_ckp_path = f"{args['model_dir']}/ckpt_{last_ckp}.pth"
+        last_ckp_path = f"{args['model_dir']}/ckp_{last_ckp}.pth"
         print(f"Loading Policy satate_dict from {last_ckp_path}.")
         policy_state_dict = torch.load(last_ckp_path)["policy_model"]
         policy.model.load_state_dict(policy_state_dict)
