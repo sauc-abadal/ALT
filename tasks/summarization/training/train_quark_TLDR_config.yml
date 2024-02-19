@@ -49,7 +49,7 @@ train:
   cuda_deterministic: True
   max_input_length: 1024
   unfrozen_layers_ratio: 0.3
-  state_file_path: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q_v0/state.json
+  state_file_path: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q/state.json
 
 data:
   name_or_path: CarperAI/openai_summarize_tldr
@@ -59,11 +59,12 @@ data:
   test_split_name: None
 
 logging:
-  run_name: quark_TLDR_5q_v0
+  run_name: quark_TLDR_5q
+  run_id: 0
   wandb_log: True
   wandb_entity: sauc-ms-thesis
   wandb_project: nlf
   log_interval: 100
   save_interval: 500
   eval_interval: 500
-  save_dir: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q_v0
+  save_dir: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q

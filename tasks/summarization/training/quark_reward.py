@@ -6,6 +6,7 @@ import os
 import argparse
 import yaml
 import json
+import gc
 
 from tqdm import tqdm
 from transformers import AutoTokenizer
@@ -114,6 +115,9 @@ class QuarkRewarder:
 
 def main():
     print("############### quark_reward.py ###############")
+    gc.collect()
+    torch.cuda.empty_cache()
+
     # Set seed
     set_seed(
         seed=args['train']['seed'], 
@@ -123,14 +127,15 @@ def main():
     num_gpus = torch.cuda.device_count()
     print(f'Detected {num_gpus} GPUS')
     
-    # Set wandb logging
+     # Set wandb logging
     wandb_log = args['logging']['wandb_log']
     if wandb_log:
         wandb.login(key=WANDB_API_KEY)
         wandb.init(
             entity=args['logging']['wandb_entity'],
             project=args['logging']['wandb_project'],
-            name=f"{args['logging']['run_name']}"
+            name=f"{args['logging']['run_name']}",
+            id=f"{args['logging']['run_id']}"
         )
 
     # Load the state

@@ -8,6 +8,7 @@ import yaml
 import json
 from typing import Dict, List, Tuple, Optional, Union
 from pathlib import Path
+import gc
 
 from tqdm import tqdm
 from transformers import AutoTokenizer, GenerationConfig
@@ -28,6 +29,7 @@ parser.add_argument('--first_iter', required=True, help='whether or not is the f
 parser.add_argument('--split', required=True, help='sampling on train/valid split')
 args = parser.parse_args()
 first_iter = bool(args.first_iter)
+print(f"CLI arg 'first_iter': {first_iter}")
 split = args.split
 
 # load yaml file
@@ -148,6 +150,9 @@ class QuarkSampler:
 
 def main():
     print("############### quark_sampling.py ###############")
+    gc.collect()
+    torch.cuda.empty_cache()
+    
     # Set seed
     set_seed(
         seed=args['train']['seed'], 
@@ -165,12 +170,14 @@ def main():
         wandb.init(
             entity=args['logging']['wandb_entity'],
             project=args['logging']['wandb_project'],
-            name=f"{args['logging']['run_name']}"
+            name=f"{args['logging']['run_name']}",
+            id=f"{args['logging']['run_id']}"
         )
 
     # Load the state
     ensure_dir(args['logging']['save_dir'])
-    if args['first_iter']:
+    if bool(args['first_iter']):
+        print("Creating a new state.json file.")
         with open(args['train']['state_file_path'], "w") as f:
             json.dump({}, f)
 

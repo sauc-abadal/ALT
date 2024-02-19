@@ -8,6 +8,7 @@ import yaml
 import json
 from typing import Dict, List, Tuple, Optional, Union
 import time
+import gc
 
 from tqdm import tqdm
 from transformers import AutoTokenizer, get_scheduler
@@ -228,6 +229,9 @@ class QuarkTrainer:
 
 def main():
     print("############### quark_train.py ###############")
+    gc.collect()
+    torch.cuda.empty_cache()
+
     # Set seed
     set_seed(
         seed=args['train']['seed'], 
@@ -238,14 +242,15 @@ def main():
     print(f'Detected {num_gpus} GPUS')
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     
-    # Set wandb logging
+     # Set wandb logging
     wandb_log = args['logging']['wandb_log']
     if wandb_log:
         wandb.login(key=WANDB_API_KEY)
         wandb.init(
             entity=args['logging']['wandb_entity'],
             project=args['logging']['wandb_project'],
-            name=f"{args['logging']['run_name']}"
+            name=f"{args['logging']['run_name']}",
+            id=f"{args['logging']['run_id']}"
         )
 
     # Load the state
