@@ -28,7 +28,7 @@ parser.add_argument('--config', required=True, help='path to config file')
 parser.add_argument('--first_iter', required=True, help='whether or not is the first sampling iteration')
 parser.add_argument('--split', required=True, help='sampling on train/valid split')
 args = parser.parse_args()
-first_iter = bool(args.first_iter)
+first_iter = args.first_iter
 print(f"CLI arg 'first_iter': {first_iter}")
 split = args.split
 
@@ -176,7 +176,7 @@ def main():
 
     # Load the state
     ensure_dir(args['logging']['save_dir'])
-    if bool(args['first_iter']):
+    if args['first_iter'] == "True":
         print("Creating a new state.json file.")
         with open(args['train']['state_file_path'], "w") as f:
             json.dump({}, f)
