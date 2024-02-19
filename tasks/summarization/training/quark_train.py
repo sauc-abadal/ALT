@@ -399,7 +399,7 @@ def main():
             continue
         
     trainer.save(step_num)
-    state_dict["last_ckpt"] = step_num
+    state_dict["last_ckp"] = step_num
     save_state(state_dict, state_file_path)
     print(f"state_dict saved: {state_dict}")
 
