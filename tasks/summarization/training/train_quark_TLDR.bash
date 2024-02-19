@@ -14,12 +14,7 @@ module load eth_proxy
 # Specify the number of iterations
 freq_exploration=2 
 
-# Generate a random run_id
-run_id=$(( $RANDOM % 10000 + 1 ))
-
-# Set the run_id in the YAML config file
- yq '.logging.run_id = "'"$run_id"'"' -i tasks/summarization/training/train_quark_TLDR_config.yml
-
+python set_wandb_run_id.py --config tasks/summarization/training/train_quark_TLDR_config.yml
 
 for i in $(seq 1 $freq_exploration); do
 
