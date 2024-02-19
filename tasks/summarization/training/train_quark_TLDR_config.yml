@@ -35,7 +35,7 @@ reward:
 
 train:
   total_episodes: 50000
-  sample_interval: 20
+  sample_interval: 5
   num_quantiles: 5
   kl_coef: 0.05
   entropy_coef: 0.06
