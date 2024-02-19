@@ -25,10 +25,15 @@ model:
       temperature: 1.0
       top_k: 50
       top_p: 1.0
+<<<<<<< HEAD
     input_padding_side: left
     name_or_path: CarperAI/openai_summarize_tldr_sft
     train_generation_kwargs:
       do_sample: false
+=======
+      num_return_sequences: 1
+    valid_generation_kwargs:
+>>>>>>> 67e624d25a12464ea4c837589308280b992ff897
       max_length: 2048
       max_new_tokens: 256
       num_beams: 1
