@@ -181,7 +181,7 @@ def main():
 
     if args['split'] == 'train':
         # -------------- Initialize DataPool --------------
-        if args['first_iter']:
+        if args['first_iter'] == "True":
             # Initialize new DataPool
             data_pool = QuarkDataPool(
                 reward_quantile_tokens=quantile_tokens, num_quantiles=num_quantiles

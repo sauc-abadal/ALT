@@ -17,6 +17,7 @@ import numpy as np
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import wandb
+from accelerate import Accelerator
 
 from utils import set_seed, ensure_dir, ceil_div, reduce_mean, WANDB_API_KEY
 from tasks.summarization.models.policy import Policy
@@ -68,6 +69,11 @@ class QuarkTrainer:
             shuffle=True,
             drop_last=True,
             collate_fn=training_seq_collator
+        )
+
+        self.accelerator = Accelerator()
+        self.policy.model, self.optimizer, self.training_dataloader, self.scheduler = self.accelerator(
+            self.policy.model, self.optimizer, self.training_dataloader, self.scheduler
         )
         self.training_sampler = iter(self.training_dataloader)
 
@@ -126,7 +132,7 @@ class QuarkTrainer:
         outputs_dict = batch["outputs"]
 
         loss, stats = self.loss(step_num, inputs_dict, outputs_dict)
-        loss.backward()
+        self.accelerator.backward(loss)
 
         if self.params['train']['clip_grad']:
             torch.nn.utils.clip_grad_norm_(self.policy.model.parameters(), self.params['train']['max_grad_norm'])

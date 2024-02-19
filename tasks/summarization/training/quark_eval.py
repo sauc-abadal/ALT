@@ -109,7 +109,7 @@ class QuarkEvaluator:
             output_dict = self.ref_policy.tokenizer(generations, padding=True, truncation=True, return_tensors="pt")
             generations_input_ids = output_dict["input_ids"]
             generations_attention_mask = output_dict["attention_mask"]
-
+            masks = generations_attention_mask.to(self.policy.device)
             ref_outputs = self.ref_policy.forward_pass(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
@@ -118,7 +118,7 @@ class QuarkEvaluator:
             )
 
             ref_logprobs = ref_outputs['generated_logprobs']
-            perplexity = torch.exp(-1 * reduce_mean(ref_logprobs, generations_attention_mask.float(), axis=1), dim=1)
+            perplexity = torch.exp(-1 * reduce_mean(ref_logprobs, masks.float(), axis=1), dim=1)
             perplexities.extend(perplexity.cpu().detach().numpy().tolist())
 
         rewards = np.array(rewards)
