@@ -149,7 +149,7 @@ class QuarkSampler:
                 f.write('\n')
 
 def main():
-    print("############### quark_sampling.py ###############")
+    print(f"############### ({args['split']}) quark_sampling.py ###############")
 
     import subprocess as sp
     def get_gpu_memory():
@@ -322,9 +322,10 @@ def main():
 
     sampler.sample(sampling_stage)
 
-    state_dict["sampling_stage"] += 1
-    save_state(state_dict, state_file_path)
-    print(f"state_dict saved: {state_dict}")
+    if args["split"] == "train":
+        state_dict["sampling_stage"] += 1
+        save_state(state_dict, state_file_path)
+        print(f"state_dict saved: {state_dict}")
 
 if __name__ == "__main__":
     main()

@@ -30,7 +30,6 @@ with open(args.config) as f:
 class QuarkEvaluator:
     def __init__(self,
                  params: dict,
-                 policy: Policy,
                  ref_policy: Policy,
                  quantile_tokens: List[str],
                  reward_file: str,

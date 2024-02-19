@@ -114,7 +114,7 @@ class QuarkRewarder:
         return self.data_pool
 
 def main():
-    print("############### quark_reward.py ###############")
+    print(f"############### ({args['split']}) quark_reward.py ###############")
     gc.collect()
     torch.cuda.empty_cache()
 
@@ -209,6 +209,7 @@ def main():
     )
 
     rewarder.get_rewards(sampling_stage)
+    
     if args['split'] == 'train':
         data_pool = rewarder.update_DataPool(sampling_stage)
         print("data_pool correctly updated!")
