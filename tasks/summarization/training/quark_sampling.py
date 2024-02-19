@@ -158,7 +158,8 @@ def main():
         memory_free_values = [int(x.split()[0]) for i, x in enumerate(memory_free_info)]
         return memory_free_values
 
-    get_gpu_memory()
+    print(get_gpu_memory())
+    
 
     gc.collect()
     torch.cuda.empty_cache()
