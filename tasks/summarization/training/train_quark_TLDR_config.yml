@@ -60,7 +60,7 @@ data:
 
 logging:
   run_name: quark_TLDR_5q
-  run_id: 0
+  run_id: ""
   wandb_log: True
   wandb_entity: sauc-ms-thesis
   wandb_project: nlf

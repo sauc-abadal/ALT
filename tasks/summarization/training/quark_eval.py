@@ -7,6 +7,7 @@ import argparse
 import yaml
 import json
 from typing import Dict, List, Tuple, Optional, Union
+import gc
 
 from transformers import AutoTokenizer
 import torch
@@ -68,7 +69,7 @@ class QuarkEvaluator:
         #       [True,  True, False,  True, True, True, True, True]
         #       [False, True,  True,  True, True, True, True, True]
         input_ids = input_ids[mask].reshape(batch_size, -1)
-        attention_mask = attention_mask.reshape(batch_size, -1)
+        attention_mask = attention_mask[mask].reshape(batch_size, -1)
         return (input_ids, attention_mask)
         
     def decode(self, 
@@ -145,6 +146,10 @@ class QuarkEvaluator:
             out_file.write('\n'.join(lines))
 
 def main():
+    print("############### quark_eval.py ###############")
+    gc.collect()
+    torch.cuda.empty_cache()
+
     # Set seed
     set_seed(
         seed=args['train']['seed'], 
@@ -162,7 +167,8 @@ def main():
         wandb.init(
             entity=args['logging']['wandb_entity'],
             project=args['logging']['wandb_project'],
-            name=f"{args['logging']['run_name']}"
+            name=f"{args['logging']['run_name']}",
+            id=f"{args['logging']['run_id']}"
         )
 
     # Load the state
@@ -206,8 +212,9 @@ def main():
         device=device,
         tokenizer=tokenizer
     )
-
+    print(f"Reference policy loaded to {device}.")
     reward_file = f"{args['sampling_dir']}/quark_sampling_data_valid_stage_{sampling_stage}.json"
+    
     # -------------- Set up trainer --------------
     evaluator = QuarkEvaluator(
         params=args,

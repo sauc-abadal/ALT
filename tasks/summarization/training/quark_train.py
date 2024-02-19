@@ -242,7 +242,7 @@ def main():
     print(f'Detected {num_gpus} GPUS')
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     
-     # Set wandb logging
+    # Set wandb logging
     wandb_log = args['logging']['wandb_log']
     if wandb_log:
         wandb.login(key=WANDB_API_KEY)
@@ -383,7 +383,7 @@ def main():
 
     sample_interval = args['train']['sample_interval']
     steps_taken = 0
-    steps = list(range(step_num, total_steps))
+    steps = list(range(step_num, total_steps)) # starts at [0, total_steps-1], then [0+steps_taken, total_steps-1]
     steps = tqdm(steps)
     for step_num in steps:
         if steps_taken == sample_interval:
