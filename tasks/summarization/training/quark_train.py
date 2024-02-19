@@ -72,7 +72,7 @@ class QuarkTrainer:
         )
 
         self.accelerator = Accelerator()
-        self.policy.model, self.optimizer, self.training_dataloader, self.scheduler = self.accelerator(
+        self.policy.model, self.optimizer, self.training_dataloader, self.scheduler = self.accelerator.prepare(
             self.policy.model, self.optimizer, self.training_dataloader, self.scheduler
         )
         self.training_sampler = iter(self.training_dataloader)
