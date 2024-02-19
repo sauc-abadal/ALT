@@ -178,6 +178,5 @@ class QuarkDataPool:
         self.prompts_pool = pickle.load(open(data_files["prompts"], "rb"))
         self.responses_pool = pickle.load(open(data_files["responses"], "rb"))
         self.quantiles_pool = pickle.load(open(data_files["quantiles"], "rb"))
-        self.load_data_from_files()  # Reload internal lists for completeness
 
     
