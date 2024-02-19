@@ -43,7 +43,7 @@ class QuarkEvaluator:
 
         self.quantile_tokens = quantile_tokens
         self.best_quantile_token = self.quantile_tokens[0]
-        self.best_quantile_id = self.policy.tokenizer.convert_tokens_to_ids(self.best_quantile_token)
+        self.best_quantile_id = self.ref_policy.tokenizer.convert_tokens_to_ids(self.best_quantile_token)
 
     def remove_quantile_from_prompt_input_ids(self,
                                               input_ids: torch.Tensor,

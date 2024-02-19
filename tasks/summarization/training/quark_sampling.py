@@ -310,7 +310,7 @@ def main():
             collate_fn=lambda batch: collate_fn_wrapper(batch, best_quantile=True, conditioning=True)
         )
         print(f"Sampling Dev dataset loaded with {len(sampling_dataset)} samples | Sampling Dev dataloader with {len(sampling_dataloader)} batches")
-    
+        sampling_stage -= 1
     # -------------- Set up Sampler --------------
     sampler = QuarkSampler(
         params=args,
