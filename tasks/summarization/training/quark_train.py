@@ -57,6 +57,10 @@ class QuarkTrainer:
         self.accelerator = accelerator
         self.training_dataloader = training_dataloader
 
+        print(f"Reference Policy device set to {self.ref_policy.device}")
+        print(f"Finetuning Policy device set to {self.policy.device}")
+        print(f"Accelerator device set to {self.accelerator.device}")
+              
         self.kl_loss = torch.nn.KLDivLoss(reduction="none")
 
         self.quantile_tokens = quantile_tokens
@@ -118,6 +122,12 @@ class QuarkTrainer:
         self.optimizer.zero_grad()
         inputs_dict = batch["inputs"]
         outputs_dict = batch["outputs"]
+        print("inputs_dict:")
+        for k, v in inputs_dict.items():
+            print(f"{k} device set to {v.device}")
+        print("outputs_dict:")
+        for k, v in outputs_dict.items():
+            print(f"{k} device set to {v.device}")
 
         loss, stats = self.loss(step_num, inputs_dict, outputs_dict)
         self.accelerator.backward(loss)
