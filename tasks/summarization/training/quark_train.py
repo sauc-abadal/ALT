@@ -123,13 +123,7 @@ class QuarkTrainer:
 
         inputs_dict = batch["inputs"]
         outputs_dict = batch["outputs"]
-        print("inputs_dict:")
-        for k, v in inputs_dict.items():
-            print(f"{k} device set to {v.device}")
-        print("outputs_dict:")
-        for k, v in outputs_dict.items():
-            print(f"{k} device set to {v.device}")
-
+        
         loss, stats = self.loss(step_num, inputs_dict, outputs_dict)
         self.accelerator.backward(loss)
 
@@ -150,8 +144,7 @@ class QuarkTrainer:
             wandb.log({f'Params/lr': self.optimizer.param_groups[0]['lr']}, step=step_num)
  
     def loss(self, step_num, inputs_dict, outputs_dict) -> Tuple[torch.Tensor, Dict[str, float]]:
-        import pdb
-        pdb.set_trace()
+
         prompts_input_ids = inputs_dict["input_ids"]
         prompts_attention_mask = inputs_dict["attention_mask"]
         generations_input_ids = outputs_dict["input_ids"]
@@ -361,7 +354,7 @@ def main():
             num_non_trainable_params += num_params
     print(f"Finetuning {num_trainable_params/1e9:.2f}/{(num_trainable_params + num_non_trainable_params)/1e9:.2f}B parameters.")
 
-    total_steps = ceil_div(args['train']['total_episodes'], args['train']['training_batch_size_per_card'])
+    total_steps = ceil_div(args['train']['total_episodes'], args['train']['training_batch_size_per_card'] * args['train']['grad_accumulation_steps'])
     
     # Initialize new Optimizer and Scheduler
     optimizer = torch.optim.Adam(policy.model.parameters(), lr=float(args['train']['lr']), eps = 1e-5)

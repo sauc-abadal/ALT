@@ -29,20 +29,21 @@ reward:
   name_or_path: CarperAI/openai_summarize_tldr_sft
   load_state_dict: True
   state_dict_path: /cluster/work/sachan/sauc/summarize_from_feedback/reward_model/rm_checkpoint/pytorch_model.bin 
-  batch_size: 1
+  batch_size: 16
   max_length: 550
   half: True
 
 train:
-  total_episodes: 50000
-  sample_interval: 5
+  total_episodes: 468000 # 117k*4 -> total_steps = (total_episodes - 1)//(bs*grad_acc_steps) + 1 = 58,500 | bs=8, grad_acc_steps=1
+  sample_interval: 14625 # 14625*8 = 117k data points observed between sampling stages
   num_quantiles: 5
   kl_coef: 0.05
   entropy_coef: 0.06
-  sampling_batch_size_per_card: 1
-  training_batch_size_per_card: 1
+  sampling_batch_size_per_card: 16
+  training_batch_size_per_card: 8
+  grad_accumulation_steps: 1
   lr: 1e-5
-  n_warmup_steps: 100
+  n_warmup_steps: 2925 # 5% of total_steps
   clip_grad: False
   max_grad_norm: 0.5
   seed: 42
@@ -64,8 +65,8 @@ logging:
   wandb_log: True
   wandb_entity: sauc-ms-thesis
   wandb_project: nlf
-  log_interval: 100
-  save_interval: 500
-  eval_interval: 500
+  log_interval: 1000
+  save_interval: 14625
+  eval_interval: 14625
   save_dir: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q
 
