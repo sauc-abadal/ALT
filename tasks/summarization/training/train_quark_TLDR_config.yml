@@ -39,7 +39,7 @@ train:
   num_quantiles: 5
   kl_coef: 0.05
   entropy_coef: 0.06
-  sampling_batch_size_per_card: 16
+  sampling_batch_size_per_card: 32
   training_batch_size_per_card: 8
   grad_accumulation_steps: 1
   lr: 1e-5
