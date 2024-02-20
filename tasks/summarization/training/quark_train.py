@@ -120,6 +120,7 @@ class QuarkTrainer:
             batch = next(self.training_sampler)
 
         self.optimizer.zero_grad()
+
         inputs_dict = batch["inputs"]
         outputs_dict = batch["outputs"]
         print("inputs_dict:")
@@ -149,7 +150,8 @@ class QuarkTrainer:
             wandb.log({f'Params/lr': self.optimizer.param_groups[0]['lr']}, step=step_num)
  
     def loss(self, step_num, inputs_dict, outputs_dict) -> Tuple[torch.Tensor, Dict[str, float]]:
-
+        import pdb
+        pdb.set_trace()
         prompts_input_ids = inputs_dict["input_ids"]
         prompts_attention_mask = inputs_dict["attention_mask"]
         generations_input_ids = outputs_dict["input_ids"]
