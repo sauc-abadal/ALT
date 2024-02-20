@@ -39,10 +39,11 @@ class QuarkTrainer:
                  params: dict,
                  policy: Policy,
                  ref_policy: Policy,
-                 data_pool: QuarkDataPool,
                  quantile_tokens: List[str],
                  optimizer: torch.optim.Optimizer,
                  scheduler: torch.optim.lr_scheduler.LambdaLR,
+                 accelerator: Accelerator,
+                 training_dataloader: DataLoader
                  ) -> None:
         
         self.params = params
@@ -51,9 +52,10 @@ class QuarkTrainer:
         self.policy.model.train()
         self.ref_policy = ref_policy
         self.ref_policy.model.eval()
-        self.data_pool = data_pool
         self.optimizer = optimizer
         self.scheduler = scheduler
+        self.accelerator = accelerator
+        self.training_dataloader = training_dataloader
 
         self.kl_loss = torch.nn.KLDivLoss(reduction="none")
 
@@ -61,20 +63,6 @@ class QuarkTrainer:
         self.best_quantile_token = self.quantile_tokens[0]
         self.best_quantile_id = self.policy.tokenizer.convert_tokens_to_ids(self.best_quantile_token)
         
-        training_dataset = QuarkTrainingDataset(data_pool=self.data_pool, tokenizer=self.policy.tokenizer)
-        training_seq_collator = QuarkTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
-        self.training_dataloader = DataLoader(
-            dataset=training_dataset.dataset["train"],
-            batch_size=self.params['train']['training_batch_size_per_card'],
-            shuffle=True,
-            drop_last=True,
-            collate_fn=training_seq_collator
-        )
-
-        self.accelerator = Accelerator()
-        self.policy.model, self.optimizer, self.training_dataloader, self.scheduler = self.accelerator.prepare(
-            self.policy.model, self.optimizer, self.training_dataloader, self.scheduler
-        )
         self.training_sampler = iter(self.training_dataloader)
 
     def remove_quantile_from_prompt_input_ids(self,
@@ -243,10 +231,11 @@ def main():
         seed=args['train']['seed'], 
         cuda_deterministic=args['train']['cuda_deterministic'])
     
-    # Set GPUs
+    # Set GPUs / Accelerator
     num_gpus = torch.cuda.device_count()
     print(f'Detected {num_gpus} GPUS')
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    accelerator = Accelerator()
+    device = accelerator.device
     
     # Set wandb logging
     wandb_log = args['logging']['wandb_log']
@@ -376,15 +365,31 @@ def main():
         scheduler.load_state_dict(saved_state_dict["scheduler"])
         print("Optimizer and Scheduler states correctly resumed.")
 
+    # -------------- Set up Accelerator ----------
+    training_dataset = QuarkTrainingDataset(data_pool=data_pool, tokenizer=policy.tokenizer)
+    training_seq_collator = QuarkTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
+    training_dataloader = DataLoader(
+        dataset=training_dataset.dataset["train"],
+        batch_size=args['train']['training_batch_size_per_card'],
+        shuffle=True,
+        drop_last=True,
+        collate_fn=training_seq_collator
+    )
+
+    policy.model, optimizer, training_dataloader, scheduler = accelerator.prepare(
+        policy.model, optimizer, training_dataloader, scheduler
+    )
+
     # -------------- Set up trainer --------------
     trainer = QuarkTrainer(
         params=args,
         policy=policy,
         ref_policy=ref_policy,
-        data_pool=data_pool,
         quantile_tokens=quantile_tokens,
         optimizer=optimizer,
         scheduler=scheduler,
+        accelerator=accelerator,
+        training_dataloader=training_dataloader,
     )
 
     sample_interval = args['train']['sample_interval']
