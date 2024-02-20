@@ -63,7 +63,7 @@ class QuarkEvaluator:
         batch_size, seq_length = input_ids.shape
         first_att_idxs = torch.argmax(attention_mask, dim=1).unsqueeze(1) # shape (batch_size, 1)
         # define boolean masking
-        mask = torch.arange(seq_length).unsqueeze(0) != first_att_idxs # shape (batch_size, seq_length)
+        mask = torch.arange(seq_length, device=first_att_idxs.device).unsqueeze(0) != first_att_idxs # shape (batch_size, seq_length)
         # e.g., [True,  True,  True, False, True, True, True, True]
         #       [True,  True, False,  True, True, True, True, True]
         #       [False, True,  True,  True, True, True, True, True]
