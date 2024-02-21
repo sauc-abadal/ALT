@@ -9,4 +9,6 @@
 #SBATCH --output="output/quark_sampling_TLDR_5q_sampling_stage_1.out"
 #SBATCH --open-mode=append
 
+python set_wandb_run_id.py --config tasks/summarization/training/train_quark_TLDR_config.yml
+
 python tasks/summarization/training/quark_sampling.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter True --split train
