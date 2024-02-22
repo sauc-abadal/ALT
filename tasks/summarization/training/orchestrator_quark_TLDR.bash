@@ -19,14 +19,15 @@ for i in $(seq 1 $freq_exploration); do
   # Conditional argument for first iteration
   if [[ $i -eq 1 ]]; then
     python tasks/summarization/training/quark_sampling.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter True --split train
+    python tasks/summarization/training/quark_reward.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter True --split train
   else
     python tasks/summarization/training/quark_sampling.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter False --split train
+    python tasks/summarization/training/quark_reward.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter False --split train
   fi
 
-  python tasks/summarization/training/quark_reward.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter True --split train
   accelerate launch --config_file tasks/summarization/training/default_accelerate_config.yaml tasks/summarization/training/quark_train.py --config tasks/summarization/training/train_quark_TLDR_config.yml
 
-  # Evaluation (unchanged)
+  # Evaluation
   python tasks/summarization/training/quark_sampling.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter False --split valid
   python tasks/summarization/training/quark_reward.py --config tasks/summarization/training/train_quark_TLDR_config.yml --first_iter False --split valid
   python tasks/summarization/training/quark_eval.py --config tasks/summarization/training/train_quark_TLDR_config.yml

@@ -18,6 +18,7 @@ from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import wandb
 from accelerate import Accelerator
+from accelerate.state import AcceleratorState
 
 from utils import set_seed, ensure_dir, ceil_div, reduce_mean, WANDB_API_KEY
 from tasks.summarization.models.policy import Policy
@@ -240,6 +241,7 @@ def main():
     num_gpus = torch.cuda.device_count()
     print(f'Detected {num_gpus} GPUS')
     accelerator = Accelerator()
+    accelerator.print(f"{AcceleratorState()}")
     device = accelerator.device
     
     # Set wandb logging
@@ -258,7 +260,7 @@ def main():
     state_dict = load_state(state_file_path)
     if "step_num" not in state_dict:
         state_dict["step_num"] = 0
-    sampling_stage = state_dict["sampling_stage"] - 1 # training is occurring in the current sampling stage, despite the variable bein already incremented after sampling
+    sampling_stage = state_dict["sampling_stage"] - 1 # training is occurring in the current sampling stage, despite the variable being already incremented after sampling
     step_num = state_dict["step_num"]
     print(f"state_dict loaded: {state_dict}")
 
@@ -354,7 +356,7 @@ def main():
             num_non_trainable_params += num_params
     print(f"Finetuning {num_trainable_params/1e9:.2f}/{(num_trainable_params + num_non_trainable_params)/1e9:.2f}B parameters.")
 
-    total_steps = ceil_div(args['train']['total_episodes'], args['train']['training_batch_size_per_card'] * args['train']['grad_accumulation_steps'])
+    total_steps = ceil_div(args['train']['total_episodes'], args['train']['training_batch_size_per_card'])
     
     # Initialize new Optimizer and Scheduler
     optimizer = torch.optim.Adam(policy.model.parameters(), lr=float(args['train']['lr']), eps = 1e-5)
@@ -399,13 +401,13 @@ def main():
 
     sample_interval = args['train']['sample_interval']
     steps_taken = 0
-    steps = list(range(step_num, total_steps)) # starts at [0, total_steps-1], then [0+steps_taken, total_steps-1]
+    steps = list(range(step_num+1, total_steps+1)) # starts at [1, total_steps], then [1+steps_taken, total_steps], etc.
     steps = tqdm(steps)
-    for step_num in steps:
+    for step in steps:
         if steps_taken == sample_interval:
             break
         try:
-            trainer.step(step_num)
+            trainer.step(step)
             steps_taken += 1
             state_dict["step_num"] += 1
         except Exception as e:
@@ -414,8 +416,8 @@ def main():
             torch.cuda.empty_cache()
             continue
         
-    trainer.save(step_num)
-    state_dict["last_ckp"] = step_num
+    trainer.save(state_dict["step_num"])
+    state_dict["last_ckp"] = state_dict["step_num"]
     save_state(state_dict, state_file_path)
     print(f"state_dict saved: {state_dict}")
 
