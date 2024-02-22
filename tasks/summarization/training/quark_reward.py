@@ -157,7 +157,7 @@ def main():
     print(f'Initializing models ...')
     
     num_quantiles = args['train']['num_quantiles']
-    quantile_tokens =  [f"_QUANTILE_TOKEN_{str(quantile_idx)}" for quantile_idx in range(num_quantiles)]
+    quantile_tokens =  [f"_QUANTILE_TOKEN_{str(quantile_idx)}_" for quantile_idx in range(num_quantiles)]
 
     # -------------- Initialize Reward Model --------------
     reward_model = GPTRewardModel(args['reward']['name_or_path'])

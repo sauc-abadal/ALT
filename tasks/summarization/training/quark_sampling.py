@@ -215,7 +215,7 @@ def main():
         tokenizer.pad_token_id = tokenizer.eos_token_id
     
     num_quantiles = args['train']['num_quantiles']
-    quantile_tokens =  [f"_QUANTILE_TOKEN_{str(quantile_idx)}" for quantile_idx in range(num_quantiles)]
+    quantile_tokens =  [f"_QUANTILE_TOKEN_{str(quantile_idx)}_" for quantile_idx in range(num_quantiles)]
 
     # add special reward quantile tokens to the tokenizer
     tokenizer.add_tokens(quantile_tokens, special_tokens=True)
