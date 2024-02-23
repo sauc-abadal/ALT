@@ -34,13 +34,13 @@ reward:
   half: True
 
 train:
-  total_episodes: 468000 # 117k*4 -> total_steps = (total_episodes - 1)//batch_size + 1 = 58,500 | batch_size=8
-  sample_interval: 14625 # freq. of exploration = 4 -> 58,500 / 4 = 14,625 | 14625*8 = 117k data points observed between sampling stages
+  total_episodes: 320000 # total_steps = (total_episodes - 1)//(bs*4gpu) + 1 = 20,000 | batch_size=4
+  sample_interval: 5000 # freq. of exploration = 4 -> 20,000 total steps | 20,000*4bs*4gpu = 320,000 data points observed in total | 320,000 / 4 = 80,000 data points observed on each sampling stage
   num_quantiles: 5
   kl_coef: 0.05
   entropy_coef: 0.06
   sampling_batch_size_per_card: 32
-  training_batch_size_per_card: 8
+  training_batch_size_per_card: 4
   lr: 1e-5
   n_warmup_steps: 2925 # 5% of total_steps
   clip_grad: False
@@ -66,4 +66,4 @@ logging:
   wandb_project: nlf
   log_interval: 1000
   save_dir: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q
-
+  

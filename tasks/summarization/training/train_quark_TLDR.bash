@@ -8,4 +8,4 @@
 #SBATCH --output="output/quark_train_TLDR_5q_sampling_stage_1.out"
 #SBATCH --open-mode=append
 
-accelerate launch --config_file tasks/summarization/training/default_accelerate_config.yaml tasks/summarization/training/quark_train.py --config tasks/summarization/training/train_quark_TLDR_config.yml
+accelerate launch --config_file tasks/summarization/training/default_config.yaml tasks/summarization/training/quark_train.py --config tasks/summarization/training/train_quark_TLDR_config.yml

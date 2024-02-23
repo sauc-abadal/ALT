@@ -356,7 +356,7 @@ def main():
             num_non_trainable_params += num_params
     print(f"Finetuning {num_trainable_params/1e9:.2f}/{(num_trainable_params + num_non_trainable_params)/1e9:.2f}B parameters.")
 
-    total_steps = ceil_div(args['train']['total_episodes'], args['train']['training_batch_size_per_card'])
+    total_steps = ceil_div(args['train']['total_episodes'], args['train']['training_batch_size_per_card']*num_gpus)
     
     # Initialize new Optimizer and Scheduler
     optimizer = torch.optim.Adam(policy.model.parameters(), lr=float(args['train']['lr']), eps = 1e-5)
