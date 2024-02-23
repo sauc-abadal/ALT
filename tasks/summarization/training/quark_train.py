@@ -57,10 +57,6 @@ class QuarkTrainer:
         self.scheduler = scheduler
         self.accelerator = accelerator
         self.training_dataloader = training_dataloader
-
-        print(f"Reference Policy device set to {self.ref_policy.device}")
-        print(f"Finetuning Policy device set to {self.policy.device}")
-        print(f"Accelerator device set to {self.accelerator.device}")
               
         self.kl_loss = torch.nn.KLDivLoss(reduction="none")
 
@@ -129,20 +125,21 @@ class QuarkTrainer:
         self.accelerator.backward(loss)
 
         if self.params['train']['clip_grad']:
-            torch.nn.utils.clip_grad_norm_(self.policy.model.parameters(), self.params['train']['max_grad_norm'])
+            self.accelerator.clip_grad_norm_(self.policy.model.parameters(), self.params['train']['max_grad_norm'])
 
         self.optimizer.step()
         self.scheduler.step()
 
         step_time = time.time() - step_started_at
         eps_per_second = float(self.params['train']['training_batch_size_per_card']) / step_time
-        print(f"[step {step_num}] | Training ... step_time={step_time:.2f}s, eps/s={eps_per_second:.2f}")     
+        self.accelerator.print(f"[step {step_num}] | Training ... step_time={step_time:.2f}s, eps/s={eps_per_second:.2f}")     
 
-       # --- LOGGING ---
+        # --- LOGGING ---
         if self.params['logging']['wandb_log']:
-            for metric in ['lm', 'kl', 'entropy', 'total']:
-                wandb.log({f'Loss/{metric}': stats[f'loss/{metric}']}, step=step_num)
-            wandb.log({f'Params/lr': self.optimizer.param_groups[0]['lr']}, step=step_num)
+            if self.accelerator.is_main_process:
+                for metric in ['lm', 'kl', 'entropy', 'total']:
+                    wandb.log({f'Loss/{metric}': stats[f'loss/{metric}']}, step=step_num)
+                wandb.log({f'Params/lr': self.optimizer.param_groups[0]['lr']}, step=step_num)
  
     def loss(self, step_num, inputs_dict, outputs_dict) -> Tuple[torch.Tensor, Dict[str, float]]:
 
@@ -190,10 +187,13 @@ class QuarkTrainer:
                 'lm_loss': reduce_mean(lm_loss, masks), 'kl_loss': reduce_mean(kl, masks),
                 'entropy': reduce_mean(generated_entropy, masks), 'total_loss': loss}
         stats = self.record_step_stats(data)
+        stats = self.accelerator.gather(stats)  # Gather stats from all GPUs
+        self.accelerator.print(stats)
 
-        prompts, generations = self.decode(self.policy.tokenizer, prompts_input_ids_raw, generations_input_ids, skip_special_tokens=True)
-        self.print_samples(queries=prompts, responses=generations, lm_loss=reduce_mean(lm_loss, masks, axis=1),
-                           logprobs=generated_logprobs, ref_logprobs=ref_logprobs, masks=masks, step_num=step_num)
+        if self.accelerator.is_main_process():
+            prompts, generations = self.decode(self.policy.tokenizer, prompts_input_ids_raw, generations_input_ids, skip_special_tokens=True)
+            self.print_samples(queries=prompts, responses=generations, lm_loss=reduce_mean(lm_loss, masks, axis=1),
+                            logprobs=generated_logprobs, ref_logprobs=ref_logprobs, masks=masks, step_num=step_num)
 
         return loss, stats
 
@@ -210,22 +210,24 @@ class QuarkTrainer:
         if step_num % self.params['logging']['log_interval'] != 0:
             return
 
-        print(f"[step {step_num}] Printing samples examples ...")
+        self.accelerator.print(f"[step {step_num}] Printing samples examples ...")
         for i in range(min(3, len(queries))):
             sample_kl = torch.sum((logprobs[i] - ref_logprobs[i]) * masks[i]).item()
-            print(f"\nSample {i+1}")
-            print(queries[i] + responses[i])
-            print(f"  lm_loss = {lm_loss[i].item():+.2f}")
-            print(f"  kl = {sample_kl:+.2f}")
-            print(f"  total = {lm_loss[i].item() + self.params['train']['kl_coef'] * sample_kl:+.2f}")
+            self.accelerator.print(f"\nSample {i+1}")
+            self.accelerator.print(queries[i] + responses[i])
+            self.accelerator.print(f"  lm_loss = {lm_loss[i].item():+.2f}")
+            self.accelerator.print(f"  kl = {sample_kl:+.2f}")
+            self.accelerator.print(f"  total = {lm_loss[i].item() + self.params['train']['kl_coef'] * sample_kl:+.2f}")
 
-    def save(self, step_num) -> None:
-        torch.save({
+    def save(self, step_num) -> None: 
+        state_dicts = self.accelerator.gather({
             'policy_model': self.policy.model.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             'scheduler': self.scheduler.state_dict()
-        }, f"{self.params['model_dir']}/ckp_{step_num}.pth")
-        print(f"[step {step_num}] | Model checkpoint saved!")
+        })
+        torch.save(state_dicts, f"{self.params['model_dir']}/ckp_{step_num}.pth")
+        self.accelerator.print(f"[step {step_num}] | Model checkpoint saved!")
+
 
 def main():
     accelerator = Accelerator()
@@ -245,16 +247,17 @@ def main():
     print(f'Detected {num_gpus} GPUS')
     device = accelerator.device
     
-    # Set wandb logging
-    wandb_log = args['logging']['wandb_log']
-    if wandb_log:
-        wandb.login(key=WANDB_API_KEY)
-        wandb.init(
-            entity=args['logging']['wandb_entity'],
-            project=args['logging']['wandb_project'],
-            name=f"{args['logging']['run_name']}",
-            id=f"{args['logging']['run_id']}"
-        )
+    if accelerator.is_main_process:
+        # Set wandb logging
+        wandb_log = args['logging']['wandb_log']
+        if wandb_log:
+            wandb.login(key=WANDB_API_KEY)
+            wandb.init(
+                entity=args['logging']['wandb_entity'],
+                project=args['logging']['wandb_project'],
+                name=f"{args['logging']['run_name']}",
+                id=f"{args['logging']['run_id']}"
+            )
 
     # Load the state
     state_file_path = args['train']['state_file_path'] 
@@ -263,19 +266,20 @@ def main():
         state_dict["step_num"] = 0
     sampling_stage = state_dict["sampling_stage"] - 1 # training is occurring in the current sampling stage, despite the variable being already incremented after sampling
     step_num = state_dict["step_num"]
-    print(f"state_dict loaded: {state_dict}")
+    accelerator.print(f"state_dict loaded: {state_dict}")
 
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
     args['model_dir'] = os.path.join(args['save_dir'], 'model')
     ensure_dir(args['model_dir'])
-    print(f"Loading/Saving policy model from directory: {args['model_dir']}")
+    accelerator.print(f"Loading/Saving policy model from directory: {args['model_dir']}")
 
-    # Save the config file
-    with open(os.path.join(args['save_dir'], 'args.json'), 'w') as f:
-        json.dump(args, f, indent=2)
+    if accelerator.is_main_process:
+        # Save the config file
+        with open(os.path.join(args['save_dir'], 'args.json'), 'w') as f:
+            json.dump(args, f, indent=2)
 
-    print(f'Initializing models ...')
+    accelerator.print(f'Initializing models ...')
 
     # -------------- Initialize Tokenizer --------------
     tokenizer = AutoTokenizer.from_pretrained(
@@ -300,7 +304,7 @@ def main():
         device=device,
         tokenizer=tokenizer
     )
-    print(f"Reference policy loaded to {device}.")
+    accelerator.print(f"Reference policy loaded to {device}.")
 
     # -------------- Initialize Policy to be finetuned --------------
     policy = Policy(
@@ -308,7 +312,7 @@ def main():
         device=device,
         tokenizer=tokenizer
     )
-    print(f"Policy correctly loaded to {device}.")
+    accelerator.print(f"Policy correctly loaded to {device}.")
     # resize token_embeddings associated to the newly added tokens
     weights = policy.model.get_input_embeddings().weight.detach().cpu().numpy()
     mean_weights, std_weights = np.mean(weights, axis=0), np.std(weights, axis=0)
@@ -323,10 +327,10 @@ def main():
         # Resume training -> Load last ckpt
         last_ckp = state_dict["last_ckp"]
         last_ckp_path = f"{args['model_dir']}/ckp_{last_ckp}.pth"
-        print(f"Loading Policy satate_dict from {last_ckp_path}.")
+        accelerator.print(f"Loading Policy satate_dict from {last_ckp_path}.")
         saved_state_dict = torch.load(last_ckp_path)
         policy.model.load_state_dict(saved_state_dict["policy_model"])
-        print(f"Policy satate_dict correctly loaded from {last_ckp_path}.")
+        accelerator.print(f"Policy satate_dict correctly loaded from {last_ckp_path}.")
 
     # -------------- Initialize DataPool --------------
     # Load existing DataPool
@@ -335,7 +339,7 @@ def main():
         reward_quantile_tokens=quantile_tokens, num_quantiles=num_quantiles
     )
     data_pool.load_from_dict(datapool_load_dict)
-    print("Existing data_pool correctly loaded.")
+    accelerator.print("Existing data_pool correctly loaded.")
 
     # -------------- Prepare Optimizer and Schedulers --------------
 
@@ -355,7 +359,7 @@ def main():
             num_trainable_params += num_params
         else:
             num_non_trainable_params += num_params
-    print(f"Finetuning {num_trainable_params/1e9:.2f}/{(num_trainable_params + num_non_trainable_params)/1e9:.2f}B parameters.")
+    accelerator.print(f"Finetuning {num_trainable_params/1e9:.2f}/{(num_trainable_params + num_non_trainable_params)/1e9:.2f}B parameters.")
 
     total_steps = ceil_div(args['train']['total_episodes'], args['train']['training_batch_size_per_card']*num_gpus)
     
@@ -371,7 +375,7 @@ def main():
         # Restore Optimizer and Scheduler states if resuming training
         optimizer.load_state_dict(saved_state_dict["optimizer"])
         scheduler.load_state_dict(saved_state_dict["scheduler"])
-        print("Optimizer and Scheduler states correctly resumed.")
+        accelerator.print("Optimizer and Scheduler states correctly resumed.")
 
     # -------------- Set up Accelerator ----------
     training_dataset = QuarkTrainingDataset(data_pool=data_pool, tokenizer=policy.tokenizer)
@@ -403,12 +407,13 @@ def main():
     sample_interval = args['train']['sample_interval']
     steps_taken = 0
     steps = list(range(step_num+1, total_steps+1)) # starts at [1, total_steps], then [1+steps_taken, total_steps], etc.
-    steps = tqdm(steps)
+    steps = tqdm(steps, disable=not accelerator.is_main_process)
     for step in steps:
         if steps_taken == sample_interval:
             break
         try:
             trainer.step(step)
+            accelerator.wait_for_everyone()
             steps_taken += 1
             state_dict["step_num"] += 1
         except Exception as e:
@@ -416,11 +421,14 @@ def main():
             print(e)
             torch.cuda.empty_cache()
             continue
-        
+
+    accelerator.wait_for_everyone() 
     trainer.save(state_dict["step_num"])
-    state_dict["last_ckp"] = state_dict["step_num"]
-    save_state(state_dict, state_file_path)
-    print(f"state_dict saved: {state_dict}")
+
+    if accelerator.is_main_process:
+        state_dict["last_ckp"] = state_dict["step_num"]
+        save_state(state_dict, state_file_path)
+    accelerator.print(f"state_dict saved: {state_dict}")
 
 if __name__ == "__main__":
     main()
