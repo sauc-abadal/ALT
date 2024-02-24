@@ -129,7 +129,7 @@ class QuarkTrainer:
         self.accelerator.backward(loss)
 
         if self.params['train']['clip_grad']:
-            torch.nn.utils.clip_grad_norm_(self.policy.model.parameters(), self.params['train']['max_grad_norm'])
+            self.accelerator.clip_grad_norm_(self.policy.model.parameters(), self.params['train']['max_grad_norm'])
 
         self.optimizer.step()
         self.scheduler.step()
@@ -220,12 +220,13 @@ class QuarkTrainer:
             print(f"  total = {lm_loss[i].item() + self.params['train']['kl_coef'] * sample_kl:+.2f}")
 
     def save(self, step_num) -> None:
-        torch.save({
-            'policy_model': self.policy.model.state_dict(),
-            'optimizer': self.optimizer.state_dict(),
-            'scheduler': self.scheduler.state_dict()
-        }, f"{self.params['model_dir']}/ckp_{step_num}.pth")
+        model_state = self.accelerator.get_state_dict(self.policy.model) # This will call the unwrap model as well
+        self.accelerator.save(model_state, f"{self.params['model_dir']}/model_ckp_{step_num}.pth") # Use in place of `torch.save`
         print(f"[step {step_num}] | Model checkpoint saved!")
+
+        self.accelerator.save_state(f"{self.params['model_dir']}/full_ckp_{step_num}.pth")
+        print(f"[step {step_num}] | Model, Optimizer, Scheduler, etc. checkpoint saved!")
+       
 
 def main():
     accelerator = Accelerator()
@@ -281,9 +282,9 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(
         args['model']['tokenizer']['name_or_path'],
         padding_side=args['model']['policy_model']['input_padding_side'], # left padding
-        model_max_length=args['train']['max_input_length']) # GPT2Tokenizer -> vocab_size 50257 (id from 0 to 50256) + extra_tokens for efficiency (id from 50257 to 50399) -> 50400 total vocabulary 
+        max_length=args['train']['max_input_length']) # GPT2Tokenizer -> vocab_size 50257 (id from 0 to 50256) + extra_tokens for efficiency (id from 50257 to 50399) -> 50400 total vocabulary 
     
-    if tokenizer.pad_token is None:
+    if not tokenizer.pad_token:
         print("Setting PAD token to EOS token for open-ended generation.")
         tokenizer.pad_token = tokenizer.eos_token # as GPT-J's tokenizer doesn't have a padding token -> eos_token = bos_token = unk_token = pad_token = "<|endoftext|>", eos_token_id = bos_token_id = unk_token_id = pad_token_id = 50256
         tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -308,7 +309,7 @@ def main():
         device=device,
         tokenizer=tokenizer
     )
-    print(f"Policy correctly loaded to {device}.")
+    print(f"Pre-trained Policy correctly loaded to {device}.")
     # resize token_embeddings associated to the newly added tokens
     weights = policy.model.get_input_embeddings().weight.detach().cpu().numpy()
     mean_weights, std_weights = np.mean(weights, axis=0), np.std(weights, axis=0)
@@ -318,15 +319,6 @@ def main():
     with torch.no_grad():
         new_inits = torch.tensor(new_inits)
         policy.model.get_input_embeddings().weight[-len(quantile_tokens):, :] = new_inits
-
-    if sampling_stage > 1:
-        # Resume training -> Load last ckpt
-        last_ckp = state_dict["last_ckp"]
-        last_ckp_path = f"{args['model_dir']}/ckp_{last_ckp}.pth"
-        print(f"Loading Policy satate_dict from {last_ckp_path}.")
-        saved_state_dict = torch.load(last_ckp_path)
-        policy.model.load_state_dict(saved_state_dict["policy_model"])
-        print(f"Policy satate_dict correctly loaded from {last_ckp_path}.")
 
     # -------------- Initialize DataPool --------------
     # Load existing DataPool
@@ -367,11 +359,6 @@ def main():
         num_warmup_steps=args['train']['n_warmup_steps'],
         num_training_steps=total_steps
     )
-    if sampling_stage > 1:
-        # Restore Optimizer and Scheduler states if resuming training
-        optimizer.load_state_dict(saved_state_dict["optimizer"])
-        scheduler.load_state_dict(saved_state_dict["scheduler"])
-        print("Optimizer and Scheduler states correctly resumed.")
 
     # -------------- Set up Accelerator ----------
     training_dataset = QuarkTrainingDataset(data_pool=data_pool, tokenizer=policy.tokenizer)
@@ -387,6 +374,13 @@ def main():
     policy.model, optimizer, training_dataloader, scheduler = accelerator.prepare(
         policy.model, optimizer, training_dataloader, scheduler
     )
+
+    # -------------- Restoring Accelerator state (Model, Optimizer, Scheduler, etc.) --------------
+    if sampling_stage > 1:
+        last_ckp = state_dict["last_ckp"]
+        last_ckp_path = f"{args['model_dir']}/full_ckp_{last_ckp}.pth"
+        print(f"Loading Accelerator state (Model, Optimizer, Scheduler, etc.) from {last_ckp_path}.")
+        accelerator.load_state(last_ckp_path)
 
     # -------------- Set up trainer --------------
     trainer = QuarkTrainer(

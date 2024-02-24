@@ -188,14 +188,11 @@ def main():
 
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
+    args['model_dir'] = os.path.join(args['save_dir'], 'model')
     args['sampling_dir'] = os.path.join(args['save_dir'], 'sampling')
+    ensure_dir(args['model_dir'])
     ensure_dir(args['sampling_dir'])
     print(f"Writing sampling data to output directory: {args['sampling_dir']}")
-    if sampling_stage > 1:
-        # Loading an ongoing-training policy
-        args['model_dir'] = os.path.join(args['save_dir'], 'model')
-        ensure_dir(args['model_dir'])
-        print(f"Loading policy model from directory: {args['model_dir']}")
         
     # Save the config file
     with open(os.path.join(args['save_dir'], 'args.json'), 'w') as f:
@@ -207,9 +204,9 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(
         args['model']['tokenizer']['name_or_path'],
         padding_side=args['model']['policy_model']['input_padding_side'], # left padding
-        model_max_length=args['train']['max_input_length']) # GPT2Tokenizer -> vocab_size 50257 (id from 0 to 50256) + extra_tokens for efficiency (id from 50257 to 50399) -> 50400 total vocabulary 
+        max_length=args['train']['max_input_length']) # GPT2Tokenizer -> vocab_size 50257 (id from 0 to 50256) + extra_tokens for efficiency (id from 50257 to 50399) -> 50400 total vocabulary 
     
-    if tokenizer.pad_token is None:
+    if not tokenizer.pad_token:
         print("Setting PAD token to EOS token for open-ended generation.")
         tokenizer.pad_token = tokenizer.eos_token # as GPT-J's tokenizer doesn't have a padding token -> eos_token = bos_token = unk_token = pad_token = "<|endoftext|>", eos_token_id = bos_token_id = unk_token_id = pad_token_id = 50256
         tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -227,7 +224,7 @@ def main():
         device=device,
         tokenizer=tokenizer
     )
-    print(f"Policy correctly loaded to {device}.")
+    print(f"Pre-trained Policy model correctly loaded to {device}.")
     # resize token_embeddings associated to the newly added tokens
     weights = policy.model.get_input_embeddings().weight.detach().cpu().numpy()
     mean_weights, std_weights = np.mean(weights, axis=0), np.std(weights, axis=0)
@@ -240,11 +237,12 @@ def main():
 
     if sampling_stage > 1:
         last_ckp = state_dict["last_ckp"]
-        last_ckp_path = f"{args['model_dir']}/ckp_{last_ckp}.pth"
-        print(f"Loading Policy satate_dict from {last_ckp_path}.")
+        last_ckp_path = f"{args['model_dir']}/model_ckp_{last_ckp}.pth"
+        print(f"Loading Policy model state_dict from {last_ckp_path}...")
+
         policy_state_dict = torch.load(last_ckp_path)["policy_model"]
         policy.model.load_state_dict(policy_state_dict)
-        print(f"Policy satate_dict correctly loaded from {last_ckp_path}.")
+        print(f"Policy model state_dict correctly loaded from {last_ckp_path}.")
 
     generation_config = GenerationConfig(
         max_length = args["model"]["policy_model"][f"{args['split']}_generation_kwargs"]["max_length"],
