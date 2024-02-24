@@ -130,7 +130,7 @@ class QuarkDataPool:
     def save_data_for_training_in_json(self, save_path, sampling_stage):
         # save tuples of (quantile_token, promp, response, score) in reward_file
         reward_file = Path(save_path) / f"quark_training_data_stage_{sampling_stage}.json"
-        with reward_file.open('a') as f:
+        with reward_file.open('w') as f:
             for (quantile_data, prompt_data, response_data, score_data) in zip(self.quantiles_pool, self.prompts_pool, self.responses_pool, self.scores_pool):
                 response_dict = {
                     'quantile_token': quantile_data,

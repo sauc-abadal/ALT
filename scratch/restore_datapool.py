@@ -15,24 +15,18 @@ from torch.utils.data import DataLoader
 import wandb
 
 from utils import set_seed, ensure_dir, WANDB_API_KEY
-from state import load_state, save_state
+from tasks.summarization.training.state import load_state, save_state
 from data_pool import QuarkDataPool
 from tasks.summarization.models.reward import GPTRewardModel, MyRMDataCollator, MyRMDataset
 
 # load parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', required=True, help='path to config file')
-parser.add_argument('--first_iter', required=True, help='whether or not is the first sampling iteration')
-parser.add_argument('--split', required=True, help='sampling on train/valid split')
 args = parser.parse_args()
-first_iter = args.first_iter
-split = args.split
 
 # load yaml file
 with open(args.config) as f:
     args = yaml.safe_load(f)
-    args['first_iter'] = first_iter
-    args['split'] = split
 
 class QuarkRewarder:
     def __init__(self,
@@ -46,7 +40,7 @@ class QuarkRewarder:
         self.data_pool = data_pool
     
     def update_DataPool(self, sampling_stage) -> QuarkDataPool:
-        print(f"[Sampling stage {sampling_stage} ({self.params['split']})] Updating DataPool ...")
+        print(f"[Sampling stage {sampling_stage} (train)] Updating DataPool ...")
         prompts, generations, rewards = [], [], []
         with open(self.sampling_file, 'r') as input_file:
             lines = input_file.readlines()
@@ -82,6 +76,7 @@ def main():
 
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
+    args['sampling_dir'] = os.path.join(args['save_dir'], 'sampling')
 
     print(f'Initializing models ...')
     
@@ -89,7 +84,7 @@ def main():
     quantile_tokens =  [f"_QUANTILE_TOKEN_{str(quantile_idx)}_" for quantile_idx in range(num_quantiles)]
 
 
-    sampling_file = f"{args['sampling_dir']}/quark_sampling_data_{args['split']}_stage_{sampling_stage}.json"
+    sampling_file = f"{args['sampling_dir']}/quark_sampling_data_train_stage_{sampling_stage}.json"
     print(f"Reading sampling_file from: {sampling_file}")
 
     # -------------- Initialize DataPool --------------
