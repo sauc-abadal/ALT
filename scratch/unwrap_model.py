@@ -33,7 +33,7 @@ policy = Policy(
     device=device,
     tokenizer=tokenizer
 )
-
+print(f"Pre-trained model loaded to {device}.")
 weights = policy.model.get_input_embeddings().weight.detach().cpu().numpy()
 mean_weights, std_weights = np.mean(weights, axis=0), np.std(weights, axis=0)
 new_inits = np.vstack([np.random.normal(loc=mean_weights, scale=std_weights) for _ in quantile_tokens])
@@ -42,12 +42,12 @@ policy.model.resize_token_embeddings(len(tokenizer))
 with torch.no_grad():
     new_inits = torch.tensor(new_inits)
     policy.model.get_input_embeddings().weight[-len(quantile_tokens):, :] = new_inits
-
+print("New embeddings associated to the Reward Quantile Tokens added and initialized.")
 ######################
     
 policy_state_dict = torch.load(checkpoint_path)["policy_model"]
 for k, v in policy_state_dict.items():
     print(k)
     print(v.shape)
-    
+print("policy_state_dict read... attempting to load it...")
 policy.model.load_state_dict(policy_state_dict)
