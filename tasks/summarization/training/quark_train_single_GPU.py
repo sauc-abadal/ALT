@@ -397,20 +397,24 @@ def main():
     sample_interval = args['train']['sample_interval']
     steps_taken = 0
     steps = list(range(step_num+1, total_steps+1)) # starts at [1, total_steps], then [1+steps_taken, total_steps], etc.
-    steps = tqdm(steps)
-    for step in steps:
-        if steps_taken == sample_interval:
-            break
+    steps_bar = tqdm(total=len(steps), initial=step_num, position=0)
+
+    while steps_taken < sample_interval:
         try:
-            trainer.step(step)
+            trainer.step(step_num+1)
             steps_taken += 1
+            step_num += 1
             state_dict["step_num"] += 1
+            steps_bar.update(1)
         except Exception as e:
             print("There was an Exception while trying to perform trainer.step()!")
             print(e)
             torch.cuda.empty_cache()
+            steps_bar.update(0)
             continue
-        
+
+    steps_bar.close()
+
     trainer.save(state_dict["step_num"])
     state_dict["last_ckp"] = state_dict["step_num"]
     save_state(state_dict, state_file_path)
