@@ -26,8 +26,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--config', required=True, help='path to config file')
 parser.add_argument('--split', required=True, help='sampling on train/valid split')
 args = parser.parse_args()
-first_iter = args.first_iter
-print(f"CLI arg 'first_iter': {first_iter}")
 split = args.split
 
 # load yaml file
