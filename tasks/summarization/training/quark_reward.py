@@ -126,17 +126,6 @@ def main():
     num_gpus = torch.cuda.device_count()
     print(f'Detected {num_gpus} GPUS')
     
-     # Set wandb logging
-    wandb_log = args['logging']['wandb_log']
-    if wandb_log:
-        wandb.login(key=WANDB_API_KEY)
-        wandb.init(
-            entity=args['logging']['wandb_entity'],
-            project=args['logging']['wandb_project'],
-            name=f"{args['logging']['run_name']}",
-            id=f"{args['logging']['run_id']}"
-        )
-
     # Load the state
     state_file_path = args['train']['state_file_path'] 
     state_dict = load_state(state_file_path)
