@@ -138,11 +138,11 @@ class QuarkTrainer:
         eps_per_second = float(self.params['train']['training_batch_size_per_card']) / step_time
         print(f"[step {step_num}] | Training ... step_time={step_time:.2f}s, eps/s={eps_per_second:.2f}")     
 
-       # --- LOGGING ---
-        if self.params['logging']['wandb_log']:
-            for metric in ['lm', 'kl', 'entropy', 'total']:
-                wandb.log({f'Loss/{metric}': stats[f'loss/{metric}']}, step=step_num)
-            wandb.log({f'Params/lr': self.optimizer.param_groups[0]['lr']}, step=step_num)
+        # --- LOGGING ---
+        # if self.params['logging']['wandb_log']:
+        #     for metric in ['lm', 'kl', 'entropy', 'total']:
+        #        wandb.log({f'Loss/{metric}': stats[f'loss/{metric}']}, step=step_num)
+        #     wandb.log({f'Params/lr': self.optimizer.param_groups[0]['lr']}, step=step_num)
  
     def loss(self, step_num, inputs_dict, outputs_dict) -> Tuple[torch.Tensor, Dict[str, float]]:
 
