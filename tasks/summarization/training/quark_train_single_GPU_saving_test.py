@@ -215,10 +215,14 @@ class QuarkTrainer:
             print(f"  total = {lm_loss[i].item() + self.params['train']['kl_coef'] * sample_kl:+.2f}")
 
     def save(self, step_num) -> None:
+        self.accelerator.wait_for_everyone()
         model_state = self.accelerator.get_state_dict(self.policy.model) # This will call the unwrap model as well
+        
+        self.accelerator.wait_for_everyone()
         self.accelerator.save(model_state, f"{self.params['model_dir']}/model_ckp_{step_num}.pth") # Use in place of `torch.save`
         print(f"[step {step_num}] | Model checkpoint saved!")
 
+        self.accelerator.wait_for_everyone()
         self.accelerator.save_state(f"{self.params['model_dir']}/full_ckp_{step_num}.pth")
         print(f"[step {step_num}] | Model, Optimizer, Scheduler, etc. checkpoint saved!")
        
