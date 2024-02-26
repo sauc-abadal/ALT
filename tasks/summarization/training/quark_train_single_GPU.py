@@ -378,7 +378,7 @@ def main():
     if sampling_stage > 1:
         last_ckp = state_dict["last_ckp"]
         last_ckp_path = f"{args['model_dir']}/full_ckp_{last_ckp}.pth"
-        print(f"--------------------- Loading Accelerator state (Model, Optimizer, Scheduler, etc.) from {last_ckp_path}. ---------------------")
+        print(f"\n--------------------- Loading Accelerator state (Model, Optimizer, Scheduler, etc.) from {last_ckp_path}. ---------------------")
         accelerator.load_state(last_ckp_path)
         print("--------------------- Accelerator state correclty loaded! ---------------------")
 
@@ -399,7 +399,7 @@ def main():
     steps = list(range(step_num+1, total_steps+1)) # starts at [1, total_steps], then [1+steps_taken, total_steps], etc.
     steps_bar = tqdm(total=len(steps), initial=step_num, position=0)
 
-    accelerator.print("--------------------- STARTING TRAINING! ---------------------")
+    accelerator.print("\n--------------------- STARTING TRAINING! ---------------------")
     while steps_taken < sample_interval:
         try:
             trainer.step(step_num+1)
