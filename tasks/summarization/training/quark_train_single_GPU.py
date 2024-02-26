@@ -267,7 +267,7 @@ def main():
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
     args['model_dir'] = os.path.join(args['save_dir'], 'model')
-    args['model_scratch_dir'] = os.path.join(args['scratch_dir'], 'model')
+    args['model_scratch_dir'] = os.path.join(args['logging']['scratch_dir'], 'model')
     ensure_dir(args['model_dir'])
     ensure_dir(args['model_scratch_dir'])
     print(f"Loading/Saving policy model from directories: {args['model_dir']}, {args['model_scratch_dir']}")
