@@ -1,6 +1,5 @@
 import sys
 sys.path.append("/cluster/project/sachan/sauc/nlf")
-print(sys.path)
 
 import os
 import argparse
@@ -57,10 +56,6 @@ class QuarkTrainer:
         self.scheduler = scheduler
         self.accelerator = accelerator
         self.training_dataloader = training_dataloader
-
-        print(f"Reference Policy device set to {self.ref_policy.device}")
-        print(f"Finetuning Policy device set to {self.policy.device}")
-        print(f"Accelerator device set to {self.accelerator.device}")
               
         self.kl_loss = torch.nn.KLDivLoss(reduction="none")
 
@@ -361,6 +356,7 @@ def main():
     )
 
     # -------------- Set up Accelerator ----------
+    print("Loading the training dataset and dataloader from the datapool.")
     training_dataset = QuarkTrainingDataset(data_pool=data_pool, tokenizer=policy.tokenizer)
     training_seq_collator = QuarkTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
     training_dataloader = DataLoader(
@@ -370,10 +366,13 @@ def main():
         drop_last=True,
         collate_fn=training_seq_collator
     )
+    print("Dataset and Dataloader correctly initialized!")
 
+    print("Calling accelerator.prepare()")
     policy.model, optimizer, training_dataloader, scheduler = accelerator.prepare(
         policy.model, optimizer, training_dataloader, scheduler
     )
+    print("accelerator.prepare() completed successfully!")
 
     # -------------- Restoring Accelerator state (Model, Optimizer, Scheduler, etc.) --------------
     if sampling_stage > 1:
@@ -381,6 +380,7 @@ def main():
         last_ckp_path = f"{args['model_dir']}/full_ckp_{last_ckp}.pth"
         print(f"Loading Accelerator state (Model, Optimizer, Scheduler, etc.) from {last_ckp_path}.")
         accelerator.load_state(last_ckp_path)
+        print("Accelerator state correclty loaded!")
 
     # -------------- Set up trainer --------------
     trainer = QuarkTrainer(
@@ -399,6 +399,7 @@ def main():
     steps = list(range(step_num+1, total_steps+1)) # starts at [1, total_steps], then [1+steps_taken, total_steps], etc.
     steps_bar = tqdm(total=len(steps), initial=step_num, position=0)
 
+    print("--------------------- STARTING TRAINING! ---------------------")
     while steps_taken < sample_interval:
         try:
             trainer.step(step_num+1)
