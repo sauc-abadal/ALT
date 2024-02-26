@@ -25,18 +25,8 @@ from training_dataset_and_collator import QuarkTrainingDataset, QuarkTrainingSeq
 from data_pool import QuarkDataPool
 from state import load_state, save_state
 
-# load parameters
-parser = argparse.ArgumentParser()
-parser.add_argument('--config', required=True, help='path to config file')
-args = parser.parse_args()
-
-# load yaml file
-with open(args.config) as f:
-    args = yaml.safe_load(f)
-
 class QuarkTrainer:
     def __init__(self,
-                 params: dict,
                  policy: Policy,
                  ref_policy: Policy,
                  quantile_tokens: List[str],
@@ -46,8 +36,7 @@ class QuarkTrainer:
                  training_dataloader: DataLoader
                  ) -> None:
         
-        self.params = params
-        self.num_quantiles = params['train']['num_quantiles']
+        self.num_quantiles = 5
         self.policy = policy
         self.policy.model.train()
         self.ref_policy = ref_policy
@@ -109,7 +98,7 @@ class QuarkTrainer:
 
         try:
             batch = next(self.training_sampler) # dictionary with keys "inputs", "outputs", "prompts", "input_seqs", "output_seqs"
-            assert len(batch["inputs"]["input_ids"]) == self.params['train']['training_batch_size_per_card'], 'insufficent batch'
+            assert len(batch["inputs"]["input_ids"]) == 8, 'insufficent batch'
 
         except (StopIteration, AssertionError):
             self.training_sampler = iter(self.training_dataloader)  # reset iteration to the beginning of data
@@ -123,21 +112,13 @@ class QuarkTrainer:
         loss, stats = self.loss(step_num, inputs_dict, outputs_dict)
         self.accelerator.backward(loss)
 
-        if self.params['train']['clip_grad']:
-            self.accelerator.clip_grad_norm_(self.policy.model.parameters(), self.params['train']['max_grad_norm'])
-
         self.optimizer.step()
         self.scheduler.step()
 
         step_time = time.time() - step_started_at
-        eps_per_second = float(self.params['train']['training_batch_size_per_card']) / step_time
+        eps_per_second = float(8) / step_time
         print(f"[step {step_num}] | Training ... step_time={step_time:.2f}s, eps/s={eps_per_second:.2f}")     
 
-        # --- LOGGING ---
-        # if self.params['logging']['wandb_log']:
-        #     for metric in ['lm', 'kl', 'entropy', 'total']:
-        #        wandb.log({f'Loss/{metric}': stats[f'loss/{metric}']}, step=step_num)
-        #     wandb.log({f'Params/lr': self.optimizer.param_groups[0]['lr']}, step=step_num)
  
     def loss(self, step_num, inputs_dict, outputs_dict) -> Tuple[torch.Tensor, Dict[str, float]]:
 
@@ -178,7 +159,7 @@ class QuarkTrainer:
             ref_logprobs = ref_outputs['generated_logprobs']
 
         kl = torch.sum(self.kl_loss(F.log_softmax(generated_logits, dim=-1), F.softmax(ref_logits, dim=-1)), dim=-1)
-        loss = reduce_mean(lm_loss + self.params['train']['kl_coef']*kl - self.params['train']['entropy_coef']*generated_entropy, masks)
+        loss = reduce_mean(lm_loss + 0.05*kl - 0.06*generated_entropy, masks)
 
         data = {'logprobs': generated_logprobs, 'ref_logprobs': ref_logprobs, 'masks': masks,
                 'logits': generated_logits, 'ref_logits': ref_logits,
@@ -202,7 +183,7 @@ class QuarkTrainer:
         return stats
 
     def print_samples(self, queries, responses, lm_loss, logprobs, ref_logprobs, masks, step_num) -> None:
-        if step_num % self.params['logging']['log_interval'] != 0:
+        if step_num % 1000 != 0:
             return
 
         print(f"[step {step_num}] Printing samples examples ...")
@@ -212,19 +193,19 @@ class QuarkTrainer:
             print(queries[i] + responses[i])
             print(f"  lm_loss = {lm_loss[i].item():+.2f}")
             print(f"  kl = {sample_kl:+.2f}")
-            print(f"  total = {lm_loss[i].item() + self.params['train']['kl_coef'] * sample_kl:+.2f}")
+            print(f"  total = {lm_loss[i].item() + 0.05 * sample_kl:+.2f}")
 
-    def save(self, step_num) -> None:
+    def save(self, step_num, model_dir) -> None:
         self.accelerator.wait_for_everyone()
         model_state = self.accelerator.get_state_dict(self.policy.model) # This will call the unwrap model as well
         
         self.accelerator.wait_for_everyone()
-        self.accelerator.save(model_state, f"{self.params['model_dir']}/model_ckp_{step_num}.pth") # Use in place of `torch.save`
+        self.accelerator.save(model_state, f"{model_dir}/model_ckp_{step_num}.pth") # Use in place of `torch.save`
         print(f"[step {step_num}] | Model checkpoint saved!")
 
         self.accelerator.wait_for_everyone()
         # save_state() can be called on each process, the fact it will only save on the main process is done by Accelerate behind the scenes
-        self.accelerator.save_state(f"{self.params['model_dir']}/full_ckp_{step_num}.pth")
+        self.accelerator.save_state(f"{model_dir}/full_ckp_{step_num}.pth")
         print(f"[step {step_num}] | Model, Optimizer, Scheduler, etc. checkpoint saved!")
        
 
@@ -238,27 +219,16 @@ def main():
 
     # Set seed
     set_seed(
-        seed=args['train']['seed'], 
-        cuda_deterministic=args['train']['cuda_deterministic'])
+        seed=42, 
+        cuda_deterministic=True)
     
     # Set GPUs / Accelerator
     num_gpus = torch.cuda.device_count()
     print(f'Detected {num_gpus} GPUS')
     device = accelerator.device
     
-    # Set wandb logging
-    # wandb_log = args['logging']['wandb_log']
-    # if wandb_log:
-    #     wandb.login(key=WANDB_API_KEY)
-    #     wandb.init(
-    #         entity=args['logging']['wandb_entity'],
-    #         project=args['logging']['wandb_project'],
-    #         name=f"{args['logging']['run_name']}",
-    #         id=f"{args['logging']['run_id']}"
-    #     )
-
     # Load the state
-    state_file_path = args['train']['state_file_path'] 
+    state_file_path = "/cluster/work/sachan/sauc/nlf/quark_TLDR_5q/state.json"
     state_dict = load_state(state_file_path)
     if "step_num" not in state_dict:
         state_dict["step_num"] = 0
@@ -267,29 +237,25 @@ def main():
     print(f"state_dict loaded: {state_dict}")
 
     # Set saving directories
-    args['save_dir'] = f"{args['logging']['save_dir']}/saving_test"
-    args['model_dir'] = os.path.join(args['save_dir'], 'model')
-    ensure_dir(args['model_dir'])
-    print(f"Loading/Saving policy model from directory: {args['model_dir']}")
-
-    # Save the config file
-    # with open(os.path.join(args['save_dir'], 'args.json'), 'w') as f:
-    #     json.dump(args, f, indent=2)
+    save_dir = "/cluster/work/sachan/sauc/nlf/quark_TLDR_5q/saving_test"
+    model_dir = os.path.join(save_dir, 'model')
+    ensure_dir(model_dir)
+    print(f"Loading/Saving policy model from directory: {model_dir}")
 
     print(f'--------------------- Initializing models ... ---------------------')
 
     # -------------- Initialize Tokenizer --------------
     tokenizer = AutoTokenizer.from_pretrained(
-        args['model']['tokenizer']['name_or_path'],
-        padding_side=args['model']['policy_model']['input_padding_side'], # left padding
-        max_length=args['train']['max_input_length']) # GPT2Tokenizer -> vocab_size 50257 (id from 0 to 50256) + extra_tokens for efficiency (id from 50257 to 50399) -> 50400 total vocabulary 
+        "gpt2-large",
+        padding_side="left", # left padding
+        max_length=1024) # GPT2Tokenizer -> vocab_size 50257 (id from 0 to 50256) + extra_tokens for efficiency (id from 50257 to 50399) -> 50400 total vocabulary 
     
     if not tokenizer.pad_token:
         print("Setting PAD token to EOS token for open-ended generation.")
         tokenizer.pad_token = tokenizer.eos_token # as GPT-J's tokenizer doesn't have a padding token -> eos_token = bos_token = unk_token = pad_token = "<|endoftext|>", eos_token_id = bos_token_id = unk_token_id = pad_token_id = 50256
         tokenizer.pad_token_id = tokenizer.eos_token_id
     
-    num_quantiles = args['train']['num_quantiles']
+    num_quantiles = 5
     quantile_tokens =  [f"_QUANTILE_TOKEN_{str(quantile_idx)}_" for quantile_idx in range(num_quantiles)]
 
     # add special reward quantile tokens to the tokenizer
@@ -297,7 +263,7 @@ def main():
 
     # -------------- Initialize Reference Policy --------------
     ref_policy = Policy(
-        model_checkpoint_name=args['model']['ref_policy']['name_or_path'],
+        model_checkpoint_name="gpt2-large",
         device=device,
         tokenizer=tokenizer
     )
@@ -305,7 +271,7 @@ def main():
 
     # -------------- Initialize Policy to be finetuned --------------
     policy = Policy(
-        model_checkpoint_name=args['model']['policy_model']['name_or_path'],
+        model_checkpoint_name="gpt2-large",
         device=device,
         tokenizer=tokenizer
     )
@@ -332,7 +298,7 @@ def main():
     # -------------- Prepare Optimizer and Schedulers --------------
 
     # Freeze 70% of policy model backbone
-    unfrozen_layers_ratio = args['train']['unfrozen_layers_ratio']
+    unfrozen_layers_ratio = 0.3
     layers = policy.model.transformer.h
     num_layers = len(layers)
     num_unfrozen = int(unfrozen_layers_ratio * num_layers)
@@ -349,14 +315,14 @@ def main():
             num_non_trainable_params += num_params
     print(f"Finetuning {num_trainable_params/1e9:.2f}/{(num_trainable_params + num_non_trainable_params)/1e9:.2f}B parameters.")
 
-    total_steps = ceil_div(args['train']['total_episodes'], args['train']['training_batch_size_per_card']*num_gpus)
+    total_steps = ceil_div(160000, 8*num_gpus)
     
     # Initialize new Optimizer and Scheduler
-    optimizer = torch.optim.Adam(policy.model.parameters(), lr=float(args['train']['lr']), eps = 1e-5)
+    optimizer = torch.optim.Adam(policy.model.parameters(), lr=float(1e-5), eps = 1e-5)
     scheduler = get_scheduler(
         name='linear',
         optimizer=optimizer,
-        num_warmup_steps=args['train']['n_warmup_steps'],
+        num_warmup_steps=1000,
         num_training_steps=total_steps
     )
 
@@ -366,7 +332,7 @@ def main():
     training_seq_collator = QuarkTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
     training_dataloader = DataLoader(
         dataset=training_dataset.dataset["train"],
-        batch_size=args['train']['training_batch_size_per_card'],
+        batch_size=8,
         shuffle=True,
         drop_last=True,
         collate_fn=training_seq_collator
@@ -383,14 +349,13 @@ def main():
     # this should be done after accelerator.prepare() and on all processes.
     if sampling_stage > 1:
         last_ckp = state_dict["last_ckp"]
-        last_ckp_path = f"{args['model_dir']}/full_ckp_{last_ckp}.pth"
+        last_ckp_path = f"{model_dir}/full_ckp_{last_ckp}.pth"
         print(f"\n--------------------- Loading Accelerator state (Model, Optimizer, Scheduler, etc.) from {last_ckp_path}. ---------------------")
         accelerator.load_state(last_ckp_path)
         print("--------------------- Accelerator state correclty loaded! ---------------------")
 
     # -------------- Set up trainer --------------
     trainer = QuarkTrainer(
-        params=args,
         policy=policy,
         ref_policy=ref_policy,
         quantile_tokens=quantile_tokens,
@@ -423,7 +388,7 @@ def main():
     steps_bar.close()
     import pdb
     pdb.set_trace()
-    trainer.save(state_dict["step_num"])
+    trainer.save(state_dict["step_num"], model_dir)
     state_dict["last_ckp"] = state_dict["step_num"]
     save_state(state_dict, state_file_path)
     print(f"state_dict saved: {state_dict}")
