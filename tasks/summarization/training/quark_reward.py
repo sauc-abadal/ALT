@@ -1,6 +1,5 @@
 import sys
 sys.path.append("/cluster/project/sachan/sauc/nlf")
-print(sys.path)
 
 import os
 import argparse
@@ -151,8 +150,9 @@ def main():
     print(f"Writing reward data to output directory: {args['sampling_dir']}")
         
     # Save the config file
-    with open(os.path.join(args['save_dir'], 'args.json'), 'w') as f:
-        json.dump(args, f, indent=2)
+    if args['split'] == "train":
+        with open(os.path.join(args['save_dir'], f'reward_args_sampling_stage_{sampling_stage}.json'), 'w') as f:
+            json.dump(args, f, indent=2)
     
     print(f'Initializing models ...')
     

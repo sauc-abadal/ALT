@@ -214,12 +214,15 @@ class QuarkTrainer:
             print(f"  kl = {sample_kl:+.2f}")
             print(f"  total = {lm_loss[i].item() + self.params['train']['kl_coef'] * sample_kl:+.2f}")
 
-    def save(self, step_num) -> None:
+    def save(self, step_num, save_dir: Optional[str] = None) -> None:
+        if not save_dir:
+            save_dir =self.params['model_dir']
+
         model_state = self.accelerator.get_state_dict(self.policy.model) # This will call the unwrap model as well
-        self.accelerator.save(model_state, f"{self.params['model_dir']}/model_ckp_{step_num}.pth") # Use in place of `torch.save`
+        self.accelerator.save(model_state, f"{save_dir}/model_ckp_{step_num}.pth") # Use in place of `torch.save`
         print(f"[step {step_num}] | Model checkpoint saved!")
 
-        self.accelerator.save_state(f"{self.params['model_dir']}/full_ckp_{step_num}.pth")
+        self.accelerator.save_state(f"{save_dir}/full_ckp_{step_num}.pth")
         print(f"[step {step_num}] | Model, Optimizer, Scheduler, etc. checkpoint saved!")
        
 
@@ -264,11 +267,13 @@ def main():
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
     args['model_dir'] = os.path.join(args['save_dir'], 'model')
+    args['model_scratch_dir'] = os.path.join(args['scratch_dir'], 'model')
     ensure_dir(args['model_dir'])
-    print(f"Loading/Saving policy model from directory: {args['model_dir']}")
+    ensure_dir(args['model_scratch_dir'])
+    print(f"Loading/Saving policy model from directories: {args['model_dir']}, {args['model_scratch_dir']}")
 
     # Save the config file
-    with open(os.path.join(args['save_dir'], 'args.json'), 'w') as f:
+    with open(os.path.join(args['save_dir'], f'training_args_sampling_stage_{sampling_stage}.json'), 'w') as f:
         json.dump(args, f, indent=2)
 
     print(f'--------------------- Initializing models ... ---------------------')
@@ -396,13 +401,16 @@ def main():
 
     sample_interval = args['train']['sample_interval']
     steps_taken = 0
-    steps = list(range(step_num+1, total_steps+1)) # starts at [1, total_steps], then [1+steps_taken, total_steps], etc.
-    steps_bar = tqdm(total=len(steps), initial=step_num, position=0)
+    steps_bar = tqdm(total=total_steps, initial=step_num, position=0)
 
     accelerator.print("\n--------------------- STARTING TRAINING! ---------------------")
     while steps_taken < sample_interval:
         try:
             trainer.step(step_num+1)
+
+            if step_num % args['logging']['save_interval'] == 0:
+                trainer.save(step_num+1, save_dir=args["model_scratch_dir"])
+
             steps_taken += 1
             step_num += 1
             state_dict["step_num"] += 1

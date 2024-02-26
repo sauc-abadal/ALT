@@ -1,6 +1,5 @@
 import sys
 sys.path.append("/cluster/project/sachan/sauc/nlf")
-print(sys.path)
 
 import os
 import argparse
@@ -195,8 +194,9 @@ def main():
     print(f"Writing sampling data to output directory: {args['sampling_dir']}")
         
     # Save the config file
-    with open(os.path.join(args['save_dir'], 'args.json'), 'w') as f:
-        json.dump(args, f, indent=2)
+    if args['split'] == "train":
+        with open(os.path.join(args['save_dir'], f'sampling_args_sampling_stage_{sampling_stage}.json'), 'w') as f:
+            json.dump(args, f, indent=2)
     
     print(f'Initializing models ...')
 
@@ -235,15 +235,18 @@ def main():
         new_inits = torch.tensor(new_inits)
         policy.model.get_input_embeddings().weight[-len(quantile_tokens):, :] = new_inits
 
+
+    # ----------------- LOADING MODEL CHECKPOINT -----------------
     if sampling_stage > 1:
         last_ckp = state_dict["last_ckp"]
         last_ckp_path = f"{args['model_dir']}/model_ckp_{last_ckp}.pth"
         print(f"Loading Policy model state_dict from {last_ckp_path}...")
 
-        policy_state_dict = torch.load(last_ckp_path)["policy_model"]
+        policy_state_dict = torch.load(last_ckp_path)
         policy.model.load_state_dict(policy_state_dict)
         print(f"Policy model state_dict correctly loaded from {last_ckp_path}.")
-
+    # ---------------------------------------------------
+        
     generation_config = GenerationConfig(
         max_length = args["model"]["policy_model"][f"{args['split']}_generation_kwargs"]["max_length"],
         max_new_tokens = args["model"]["policy_model"][f"{args['split']}_generation_kwargs"]["max_new_tokens"],
@@ -296,6 +299,7 @@ def main():
         )
         print(f"Sampling Dev dataset loaded with {len(sampling_dataset)} samples | Sampling Dev dataloader with {len(sampling_dataloader)} batches")
         sampling_stage -= 1
+
     # -------------- Set up Sampler --------------
     sampler = QuarkSampler(
         params=args,

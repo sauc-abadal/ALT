@@ -3,7 +3,7 @@
 #SBATCH -n 1
 #SBATCH --cpus-per-task=1
 #SBATCH --gpus=a100_80gb:1
-#SBATCH --mem-per-cpu=48000
+#SBATCH --mem-per-cpu=96000
 #SBATCH --time=24:00:00
 #SBATCH --output="output/quark_train_TLDR_5q_single_GPU_sampling_stage_1.out"
 #SBATCH --open-mode=append
