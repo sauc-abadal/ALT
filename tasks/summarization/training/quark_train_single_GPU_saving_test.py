@@ -271,7 +271,7 @@ def main():
     # with open(os.path.join(args['save_dir'], 'args.json'), 'w') as f:
     #     json.dump(args, f, indent=2)
 
-    print(f'Initializing models ...')
+    print(f'--------------------- Initializing models ... ---------------------')
 
     # -------------- Initialize Tokenizer --------------
     tokenizer = AutoTokenizer.from_pretrained(
@@ -356,7 +356,7 @@ def main():
     )
 
     # -------------- Set up Accelerator ----------
-    print("Loading the training dataset and dataloader from the datapool.")
+    print("\n--------------------- Loading the training dataset and dataloader from the datapool. ---------------------")
     training_dataset = QuarkTrainingDataset(data_pool=data_pool, tokenizer=policy.tokenizer)
     training_seq_collator = QuarkTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
     training_dataloader = DataLoader(
@@ -366,21 +366,21 @@ def main():
         drop_last=True,
         collate_fn=training_seq_collator
     )
-    print("Dataset and Dataloader correctly initialized!")
+    print("--------------------- Dataset and Dataloader correctly initialized! ---------------------")
 
-    print("Calling accelerator.prepare()")
+    print("\n--------------------- Calling accelerator.prepare() ---------------------")
     policy.model, optimizer, training_dataloader, scheduler = accelerator.prepare(
         policy.model, optimizer, training_dataloader, scheduler
     )
-    print("accelerator.prepare() completed successfully!")
+    print("--------------------- accelerator.prepare() completed successfully! ---------------------")
 
     # -------------- Restoring Accelerator state (Model, Optimizer, Scheduler, etc.) --------------
     if sampling_stage > 1:
         last_ckp = state_dict["last_ckp"]
         last_ckp_path = f"{args['model_dir']}/full_ckp_{last_ckp}.pth"
-        print(f"Loading Accelerator state (Model, Optimizer, Scheduler, etc.) from {last_ckp_path}.")
+        print(f"--------------------- Loading Accelerator state (Model, Optimizer, Scheduler, etc.) from {last_ckp_path}. ---------------------")
         accelerator.load_state(last_ckp_path)
-        print("Accelerator state correclty loaded!")
+        print("--------------------- Accelerator state correclty loaded! ---------------------")
 
     # -------------- Set up trainer --------------
     trainer = QuarkTrainer(
@@ -408,7 +408,7 @@ def main():
             state_dict["step_num"] += 1
             steps_bar.update(1)
         except Exception as e:
-            print("There was an Exception while trying to perform trainer.step()!")
+            print("--------------------- There was an Exception while trying to perform trainer.step()! ---------------------")
             print(e)
             torch.cuda.empty_cache()
             steps_bar.update(0)
