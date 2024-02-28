@@ -7,7 +7,8 @@ from transformers import AutoTokenizer
 parser = argparse.ArgumentParser()
 parser.add_argument('--root_path', required=True, help='path to root directory containing the input json file and where output files will be saved')
 parser.add_argument('--input_json_file', required=True, help='json file name with sampled reward data')
-parser.add_argument('--output_file_prefix', required=True, help='output file prefix ')
+parser.add_argument('--output_file_prefix', required=True, help='output file prefix')
+parser.add_argument('--references', required=True, help='boolean, whether the key should be "generation" or "summary"')
 args = parser.parse_args()
 
 def compute_stats_and_save_histograms(jsonl_file, output_file_prefix):
@@ -17,12 +18,17 @@ def compute_stats_and_save_histograms(jsonl_file, output_file_prefix):
     # Lists to store values
     generations = []
 
+    if args.references:
+        key = 'summary'
+    else:
+        key = 'generation'
+
     # Read the JSONL file
     with open(jsonl_file, 'r') as file:
         lines = file.readlines()
         for line in lines:
             entry = json.loads(line)
-            generations.append(entry['generation'])
+            generations.append(entry[key])
 
     encoded_generations = tokenizer(generations)["input_ids"]
     generations_lens = [len(encoded_gen) for encoded_gen in encoded_generations]
