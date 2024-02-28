@@ -1,0 +1,6 @@
+Entropy Mean: 1.6329546090529208
+Entropy Standard Deviation: 0.4703099178641113
+LM Loss Mean: 0.6442659802564968
+LM Loss Standard Deviation: 0.20423168390613902
+Reward Mean: 2.873592511616845
+Reward Standard Deviation: 1.136591462814662
