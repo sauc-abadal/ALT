@@ -18,17 +18,21 @@ def plot_histogram(data, output_file):
 
     # Plot histogram with quantile-based coloring
     fig, ax = plt.subplots()
-    quantiles = [int(token.split('_')[-2]) for token in quantile_tokens]
-    colormap = plt.cm.get_cmap('viridis', len(set(quantiles)))
 
-    ax.hist(rewards, bins=5, color=colormap(quantiles), edgecolor='black', linewidth=1.2)
+    quantiles = [int(token.split('_')[-2]) for token in quantile_tokens]
+    unique_quantiles = sorted(set(quantiles))
+    colormap = plt.cm.get_cmap('viridis', len(unique_quantiles))
+
+    for q in unique_quantiles:
+        indices = np.where(np.array(quantiles) == q)[0]
+        ax.bar(np.array(rewards)[indices], 1, color=colormap(q), edgecolor='black', linewidth=1.2, label=f'Quantile {q}')
 
     ax.set_xlabel('Rewards')
     ax.set_ylabel('Frequency')
     ax.set_title('Histogram of Rewards with Quantile-Based Coloring')
+    ax.legend()
 
     plt.savefig(output_file)
-    plt.show()
 
 def main():
     parser = argparse.ArgumentParser(description='Generate a histogram of rewards with quantile-based coloring from a JSON Lines (JSONL) file.')
