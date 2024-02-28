@@ -167,10 +167,12 @@ class QuarkTLDRSamplingPromptCollatorWithPadding(object):
                 input_ids = [[self.quantile_tokens_ids[quantiles_idx[i]]] + input_ids[i] for i in range(batch_size)]
                 attention_mask = [[1] + attention_mask_batch for attention_mask_batch in attention_mask]
 
-            inputs = {
-                "input_ids": input_ids,
-                "attention_mask": attention_mask,
-            }
+            inputs = [
+                {
+                    "input_ids": input_ids_batch,
+                    "attention_mask": attention_mask_batch,
+                }
+            for input_ids_batch, attention_mask_batch in zip(input_ids, attention_mask)]
 
         inputs = self.data_collator(inputs)
         return {"inputs": inputs, "prompts": prompts, "summaries": summaries}
