@@ -18,7 +18,7 @@ def compute_stats_and_save_histograms(jsonl_file, output_file_prefix):
     # Lists to store values
     generations = []
 
-    if args.references:
+    if args.references == "True":
         key = 'summary'
     else:
         key = 'generation'
