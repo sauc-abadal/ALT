@@ -21,7 +21,7 @@ model:
     train_generation_kwargs:
       do_sample: false
       max_length: 2048
-      max_new_tokens: 256
+      max_new_tokens: 64
       num_beams: 1
       num_return_sequences: 1
       temperature: 1.0
@@ -30,7 +30,7 @@ model:
     valid_generation_kwargs:
       do_sample: false
       max_length: 2048
-      max_new_tokens: 256
+      max_new_tokens: 64
       num_beams: 1
       num_return_sequences: 1
       temperature: 1.0
