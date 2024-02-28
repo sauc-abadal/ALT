@@ -120,7 +120,7 @@ class QuarkSampler:
             for i, batch in enumerate(tqdm(self.sampling_dataloader, total=len(self.sampling_dataloader), desc='Sampling from current policy')):
                 input_ids, attention_mask = batch["inputs"]["input_ids"], batch["inputs"]["attention_mask"]
                 prompts_batch = batch["prompts"]
-
+                
                 rollouts = self.policy.sample(
                     input_ids=input_ids, 
                     attention_mask=attention_mask,

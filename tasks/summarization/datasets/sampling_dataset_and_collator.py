@@ -153,7 +153,7 @@ class QuarkTLDRSamplingPromptCollatorWithPadding(object):
         desired_keys = ["prompt_input_ids", "prompt_attention_mask"]
         renamed_keys = ["input_ids", "attention_mask"]
         inputs = [{renamed_keys[i]: example[key] for i, key in enumerate(desired_keys)} for example in examples]
-
+        
         if conditioning:
             input_ids = [input_ids_batch["input_ids"] for input_ids_batch in inputs]
             attention_mask = [attention_mask_batch["attention_mask"] for attention_mask_batch in inputs]
