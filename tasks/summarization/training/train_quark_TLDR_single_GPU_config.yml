@@ -7,7 +7,7 @@ data:
 logging:
   log_interval: 1000
   save_interval: 1000
-  run_id: '8898'
+  run_id: '1867'
   run_name: quark_TLDR_5q
   save_dir: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q
   scratch_dir: /cluster/scratch/sabadal/nlf/quark_TLDR_5q
@@ -64,3 +64,4 @@ train:
   total_episodes: 160000
   training_batch_size_per_card: 8
   unfrozen_layers_ratio: 0.3
+
