@@ -199,15 +199,15 @@ def main():
 
     rewarder.get_rewards(sampling_stage)
     
-    if args['split'] == 'train':
-        data_pool = rewarder.update_DataPool(sampling_stage)
-        print("data_pool correctly updated!")
-        datapool_save_dict = data_pool.serialize_to_dict(args['save_dir'])
-        print("data_pool correctly serialized!")
-        state_dict["data_pool"] = datapool_save_dict
-        # Save the state
-        save_state(state_dict, state_file_path)
-        print(f"state_dict saved: {state_dict}")
+    # if args['split'] == 'train':
+    #     data_pool = rewarder.update_DataPool(sampling_stage)
+    #     print("data_pool correctly updated!")
+    #     datapool_save_dict = data_pool.serialize_to_dict(args['save_dir'])
+    #     print("data_pool correctly serialized!")
+    #     state_dict["data_pool"] = datapool_save_dict
+    #     # Save the state
+    #     save_state(state_dict, state_file_path)
+    #     print(f"state_dict saved: {state_dict}")
 
 if __name__ == "__main__":
     main()
