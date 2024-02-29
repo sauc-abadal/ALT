@@ -11,11 +11,9 @@ from tqdm import tqdm
 from transformers import AutoTokenizer
 import torch
 from torch.utils.data import DataLoader
-import wandb
 
-from utils import set_seed, ensure_dir, WANDB_API_KEY
-from state import load_state, save_state
-from data_pool import QuarkDataPool
+from utils import set_seed, ensure_dir
+from state import load_state
 from tasks.summarization.models.reward import GPTRewardModel, MyRMDataCollator, MyRMDataset
 
 # load parameters
@@ -39,7 +37,6 @@ class QuarkRewarder:
                  reward_model: GPTRewardModel,
                  reward_tokenizer: AutoTokenizer,
                  sampling_file: str,
-                 data_pool: QuarkDataPool,
                  ) -> None:
         
         self.params = params
@@ -47,7 +44,6 @@ class QuarkRewarder:
         self.reward_tokenizer = reward_tokenizer
         self.rm_collator = MyRMDataCollator(tokenizer=self.reward_tokenizer, max_length=self.reward_tokenizer.max_length)
         self.sampling_file = sampling_file
-        self.data_pool = data_pool
 
     def get_rewards(self, sampling_stage) -> None:
         print(f"[Sampling stage {sampling_stage} ({self.params['split']})] Computing rewards ...")
@@ -88,45 +84,27 @@ class QuarkRewarder:
         # Write the modified dictionaries with rewards to the sampling JSONL file
         with open(self.sampling_file, 'w') as out_file:
             out_file.write('\n'.join(lines))
-    
-    def update_DataPool(self, sampling_stage) -> QuarkDataPool:
-        print(f"[Sampling stage {sampling_stage} ({self.params['split']})] Updating DataPool ...")
-        prompts, generations, rewards = [], [], []
-        with open(self.sampling_file, 'r') as input_file:
-            lines = input_file.readlines()
-            for line in lines:
-                entry = json.loads(line)
-                prompt = entry['prompt']
-                generation = entry['generation']
-                reward = entry['reward']
-                prompts.append(prompt)
-                generations.append(generation)
-                rewards.append(reward)
-        
-        # sampling data on the current sampling stage is added to the data_pool,
-        # all the data in the data_pool is sorted by reward scores and assigned
-        # to a reward quantile token
-        self.data_pool.add(prompts=prompts, responses=generations, scores=rewards)
-
-        # save training data in training_file (reward quantile tokens used during training)
-        self.data_pool.save_data_for_training_in_json(self.params['sampling_dir'], sampling_stage)
-        return self.data_pool
 
 def main():
-    print(f"############### ({args['split']}) quark_reward.py ###############")
+
+    ################################################################
+    # -------------------- Set up Environment -------------------- #
+    ################################################################
     gc.collect()
     torch.cuda.empty_cache()
-
     # Set seed
     set_seed(
         seed=args['train']['seed'], 
-        cuda_deterministic=args['train']['cuda_deterministic'])
+        cuda_deterministic=args['train']['cuda_deterministic']
+    )
+
+    print(f"############### ({args['split']}) quark_reward.py ###############")
     
     # Set GPUs
     num_gpus = torch.cuda.device_count()
     print(f'Detected {num_gpus} GPUS')
     
-    # Load the state
+    # Load the state from the state_dict
     state_file_path = args['train']['state_file_path'] 
     state_dict = load_state(state_file_path)
     sampling_stage = state_dict["sampling_stage"] - 1
@@ -136,8 +114,10 @@ def main():
     args['save_dir'] = args['logging']['save_dir']
     args['sampling_dir'] = os.path.join(args['save_dir'], 'sampling')
     ensure_dir(args['sampling_dir'])
-    print(f"Writing reward data to output directory: {args['sampling_dir']}")
-        
+
+    sampling_file = f"{args['sampling_dir']}/quark_sampling_data_{args['split']}_stage_{sampling_stage}.json"
+    print(f"Reading/Writing reward data from/to sampling_file: {sampling_file}")
+
     # Save the config file
     if args['split'] == "train":
         with open(os.path.join(args['save_dir'], f'reward_args_sampling_stage_{sampling_stage}.json'), 'w') as f:
@@ -145,11 +125,12 @@ def main():
     
     print(f'Initializing models ...')
     
-    num_quantiles = args['train']['num_quantiles']
-    quantile_tokens =  [f"_QUANTILE_TOKEN_{str(quantile_idx)}_" for quantile_idx in range(num_quantiles)]
+    ################################################################
+    # ------------------ Initialize Reward Model ----------------- #
+    ################################################################
 
-    # -------------- Initialize Reward Model --------------
     reward_model = GPTRewardModel(args['reward']['name_or_path'])
+
     if args['reward']['load_state_dict']:
         rm_state_dict = torch.load(args['reward']['state_dict_path'])
         reward_model.load_state_dict(rm_state_dict)
@@ -165,49 +146,19 @@ def main():
     if args['reward']['half']:
         reward_model.half()
 
-    sampling_file = f"{args['sampling_dir']}/quark_sampling_data_{args['split']}_stage_{sampling_stage}.json"
-    print(f"Reading sampling_file from: {sampling_file}")
-
-    if args['split'] == 'train':
-        # -------------- Initialize DataPool --------------
-        if args['first_iter'] == "True":
-            # Initialize new DataPool
-            data_pool = QuarkDataPool(
-                reward_quantile_tokens=quantile_tokens, num_quantiles=num_quantiles
-            )
-            print("New data_pool initialized.")
-        else:
-            # Load existing DataPool
-            datapool_load_dict = state_dict["data_pool"]
-            data_pool = QuarkDataPool(
-                reward_quantile_tokens=quantile_tokens, num_quantiles=num_quantiles
-            )
-            data_pool.load_from_dict(datapool_load_dict)
-            print("Existing data_pool correctly loaded.")
-    else:
-        data_pool = None
-        print("(valid) data_pool set to None.")
-
-    # -------------- Set up Rewarder --------------
+    ################################################################
+    # ---------------------- Set up Rewarder --------------------- #
+    ################################################################
+        
     rewarder = QuarkRewarder(
         params=args,
         reward_model=reward_model,
         reward_tokenizer=reward_tokenizer,
         sampling_file=sampling_file,
-        data_pool=data_pool,
     )
 
+    print("\n--------------------- STARTING REWARDING! ---------------------\n")
     rewarder.get_rewards(sampling_stage)
     
-    # if args['split'] == 'train':
-    #     data_pool = rewarder.update_DataPool(sampling_stage)
-    #     print("data_pool correctly updated!")
-    #     datapool_save_dict = data_pool.serialize_to_dict(args['save_dir'])
-    #     print("data_pool correctly serialized!")
-    #     state_dict["data_pool"] = datapool_save_dict
-    #     # Save the state
-    #     save_state(state_dict, state_file_path)
-    #     print(f"state_dict saved: {state_dict}")
-
 if __name__ == "__main__":
     main()

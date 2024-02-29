@@ -223,25 +223,33 @@ class QuarkTrainer:
         print(f"[step {step_num}] | Model checkpoint saved!")
 
         self.accelerator.save_state(f"{save_dir}/full_ckp_{step_num}.pth")
-        print(f"[step {step_num}] | Model, Optimizer, Scheduler, etc. checkpoint saved!")
+        print(f"[step {step_num}] | Accelerator state (Model, Optimizer, Scheduler, etc. checkpoint) saved!")
        
 
 def main():
-    accelerator = Accelerator()
-    accelerator.print(f"{AcceleratorState()}")
 
-    accelerator.print("############### quark_train.py ###############")
+    ################################################################
+    # -------------------- Set up Environment -------------------- #
+    ################################################################
     gc.collect()
     torch.cuda.empty_cache()
-
     # Set seed
     set_seed(
         seed=args['train']['seed'], 
-        cuda_deterministic=args['train']['cuda_deterministic'])
+        cuda_deterministic=args['train']['cuda_deterministic']
+    )
+
+    accelerator.print("############### quark_train.py ###############")
+
+    accelerator = Accelerator()
+    accelerator.print(f"{AcceleratorState()}")
+
+    num_quantiles = args['train']['num_quantiles']
+    quantile_tokens =  [f"_QUANTILE_TOKEN_{str(quantile_idx)}_" for quantile_idx in range(num_quantiles)]
     
     # Set GPUs / Accelerator
     num_gpus = torch.cuda.device_count()
-    print(f'Detected {num_gpus} GPUS')
+    accelerator.print(f'Detected {num_gpus} GPUS')
     device = accelerator.device
     
     # Set wandb logging
@@ -255,61 +263,70 @@ def main():
             id=f"{args['logging']['run_id']}"
         )
 
-    # Load the state
+    # Load the state from the state_dict
     state_file_path = args['train']['state_file_path'] 
     state_dict = load_state(state_file_path)
     if "step_num" not in state_dict:
         state_dict["step_num"] = 0
     sampling_stage = state_dict["sampling_stage"] - 1 # training is occurring in the current sampling stage, despite the variable being already incremented after sampling
     step_num = state_dict["step_num"]
-    print(f"state_dict loaded: {state_dict}")
+    accelerator.print(f"state_dict loaded: {state_dict}")
 
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
+    args['sampling_dir'] = os.path.join(args['save_dir'], 'sampling')
     args['model_dir'] = os.path.join(args['save_dir'], 'model')
     args['model_scratch_dir'] = os.path.join(args['logging']['scratch_dir'], 'model')
+    ensure_dir(args['sampling_dir'])
     ensure_dir(args['model_dir'])
     ensure_dir(args['model_scratch_dir'])
-    print(f"Loading/Saving policy model from directories: {args['model_dir']}, {args['model_scratch_dir']}")
+    accelerator.print(f"Loading/Saving policy model from directories: {args['model_dir']}, {args['model_scratch_dir']}")
 
     # Save the config file
     with open(os.path.join(args['save_dir'], f'training_args_sampling_stage_{sampling_stage}.json'), 'w') as f:
         json.dump(args, f, indent=2)
 
-    print(f'--------------------- Initializing models ... ---------------------')
+    accelerator.print(f'--------------------- Initializing models ... ---------------------')
+    
+    ################################################################
+    # ------------------- Initialize Tokenizer ------------------- #
+    ################################################################
 
-    # -------------- Initialize Tokenizer --------------
     tokenizer = AutoTokenizer.from_pretrained(
         args['model']['tokenizer']['name_or_path'],
         padding_side=args['model']['policy_model']['input_padding_side'], # left padding
         max_length=args['train']['max_input_length']) # GPT2Tokenizer -> vocab_size 50257 (id from 0 to 50256) + extra_tokens for efficiency (id from 50257 to 50399) -> 50400 total vocabulary 
     
     if not tokenizer.pad_token:
-        print("Setting PAD token to EOS token for open-ended generation.")
+        accelerator.print("Setting PAD token to EOS token for open-ended generation.")
         tokenizer.pad_token = tokenizer.eos_token # as GPT-J's tokenizer doesn't have a padding token -> eos_token = bos_token = unk_token = pad_token = "<|endoftext|>", eos_token_id = bos_token_id = unk_token_id = pad_token_id = 50256
         tokenizer.pad_token_id = tokenizer.eos_token_id
-    
-    num_quantiles = args['train']['num_quantiles']
-    quantile_tokens =  [f"_QUANTILE_TOKEN_{str(quantile_idx)}_" for quantile_idx in range(num_quantiles)]
 
     # add special reward quantile tokens to the tokenizer
     tokenizer.add_tokens(quantile_tokens, special_tokens=True)
 
-    # -------------- Initialize Reference Policy --------------
+    ################################################################
+    # --------------- Initialize Reference Policy ---------------- #
+    ################################################################
+
     ref_policy = Policy(
         model_checkpoint_name=args['model']['ref_policy']['name_or_path'],
         device=device,
         tokenizer=tokenizer
     )
-    print(f"Reference policy loaded to {device}.")
+    accelerator.print(f"Reference policy loaded to {device}.")
 
-    # -------------- Initialize Policy to be finetuned --------------
+    ################################################################
+    # ------------ Initialize Policy to be finetuned ------------- #
+    ################################################################
+
     policy = Policy(
         model_checkpoint_name=args['model']['policy_model']['name_or_path'],
         device=device,
         tokenizer=tokenizer
     )
-    print(f"Pre-trained Policy correctly loaded to {device}.")
+    accelerator.print(f"Pre-trained Policy correctly loaded to {device}.")
+
     # resize token_embeddings associated to the newly added tokens
     weights = policy.model.get_input_embeddings().weight.detach().cpu().numpy()
     mean_weights, std_weights = np.mean(weights, axis=0), np.std(weights, axis=0)
@@ -320,16 +337,40 @@ def main():
         new_inits = torch.tensor(new_inits)
         policy.model.get_input_embeddings().weight[-len(quantile_tokens):, :] = new_inits
 
-    # -------------- Initialize DataPool --------------
-    # Load existing DataPool
-    datapool_load_dict = state_dict["data_pool"]
+    ################################################################
+    # ------------------ Initialize DataPool --------------------- #
+    ################################################################
+        
     data_pool = QuarkDataPool(
         reward_quantile_tokens=quantile_tokens, num_quantiles=num_quantiles
     )
-    data_pool.load_from_dict(datapool_load_dict)
-    print("Existing data_pool correctly loaded.")
+    
+    if sampling_stage > 1:
+        # Load existing DataPool
+        datapool_load_dict = state_dict["data_pool"]
+        data_pool.load_from_dict(datapool_load_dict)
+        accelerator.print("Existing data_pool correctly loaded.")
+    
+    accelerator.print(f"Current DataPool has {len(data_pool.prompts_pool)} samples.")
 
-    # -------------- Prepare Optimizer and Schedulers --------------
+    # Update DataPool with the newly sampled data in the current sampling stage
+    sampling_file = f"{args['sampling_dir']}/quark_sampling_data_train_stage_{sampling_stage}.json"
+    accelerator.print(f"Updating DataPool with sampling_file from: {sampling_file}")
+    data_pool = data_pool.update_DataPool(
+        sampling_file, 
+        drop_factor=args['train']['datapool_drop_factor']
+    )
+    accelerator.print("DataPool correctly updated!")
+    accelerator.print(f"Updated DataPool has {len(data_pool.prompts_pool)} samples.")
+
+    # Save new DataPool state to state_dict (state_dict to be saved once training completes)
+    datapool_save_dict = data_pool.serialize_to_dict(args['save_dir'])
+    accelerator.print("Updated DataPool correctly serialized!")
+    state_dict["data_pool"] = datapool_save_dict
+    
+    ################################################################
+    # ------------ Prepare Optimizer and Schedulers -------------- #
+    ################################################################
 
     # Freeze 70% of policy model backbone
     unfrozen_layers_ratio = args['train']['unfrozen_layers_ratio']
@@ -347,11 +388,12 @@ def main():
             num_trainable_params += num_params
         else:
             num_non_trainable_params += num_params
-    print(f"Finetuning {num_trainable_params/1e9:.2f}/{(num_trainable_params + num_non_trainable_params)/1e9:.2f}B parameters.")
 
+    accelerator.print(f"Finetuning {num_trainable_params/1e9:.2f}/{(num_trainable_params + num_non_trainable_params)/1e9:.2f}B parameters.")
+
+    # Initialize new Optimizer and Scheduler
     total_steps = ceil_div(args['train']['total_episodes'], args['train']['training_batch_size_per_card']*num_gpus)
     
-    # Initialize new Optimizer and Scheduler
     optimizer = torch.optim.Adam(policy.model.parameters(), lr=float(args['train']['lr']), eps = 1e-5)
     scheduler = get_scheduler(
         name='linear',
@@ -360,8 +402,11 @@ def main():
         num_training_steps=total_steps
     )
 
-    # -------------- Set up Accelerator ----------
-    accelerator.print("\n--------------------- Loading the training dataset and dataloader from the datapool. ---------------------")
+    ################################################################
+    # --------------------- Dataset / Dataloader ----------------- #
+    ################################################################
+
+    accelerator.print("Loading the training dataset and dataloader from the DataPool.")
     training_dataset = QuarkTrainingDataset(data_pool=data_pool, tokenizer=policy.tokenizer)
     training_seq_collator = QuarkTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
     training_dataloader = DataLoader(
@@ -371,23 +416,30 @@ def main():
         drop_last=True,
         collate_fn=training_seq_collator
     )
-    accelerator.print("--------------------- Dataset and Dataloader correctly initialized! ---------------------")
+    accelerator.print("Dataset and Dataloader correctly initialized!")
 
-    accelerator.print("\n--------------------- Calling accelerator.prepare() ---------------------")
+    ################################################################
+    # ---------------------- Set up Accelerator ------------------ #
+    ################################################################
+
+    accelerator.print("\nCalling accelerator.prepare()...\n")
     policy.model, optimizer, training_dataloader, scheduler = accelerator.prepare(
         policy.model, optimizer, training_dataloader, scheduler
     )
-    accelerator.print("--------------------- accelerator.prepare() completed successfully! ---------------------")
+    accelerator.print("\naccelerator.prepare() completed successfully!")
 
-    # -------------- Restoring Accelerator state (Model, Optimizer, Scheduler, etc.) --------------
     if sampling_stage > 1:
+        # Restoring Accelerator state (Model, Optimizer, Scheduler, etc.)
         last_ckp = state_dict["last_ckp"]
         last_ckp_path = f"{args['model_dir']}/full_ckp_{last_ckp}.pth"
-        print(f"\n--------------------- Loading Accelerator state (Model, Optimizer, Scheduler, etc.) from {last_ckp_path}. ---------------------")
+        accelerator.print(f"\nLoading Accelerator state (Model, Optimizer, Scheduler, etc.) from {last_ckp_path}.")
         accelerator.load_state(last_ckp_path)
-        print("--------------------- Accelerator state correclty loaded! ---------------------")
+        accelerator.print("Accelerator state correclty loaded!")
 
-    # -------------- Set up trainer --------------
+    ################################################################
+    # ---------------------- Set up trainer ---------------------- #
+    ################################################################
+        
     trainer = QuarkTrainer(
         params=args,
         policy=policy,
@@ -403,21 +455,22 @@ def main():
     steps_taken = 0
     steps_bar = tqdm(total=total_steps, initial=step_num, position=0)
 
-    accelerator.print("\n--------------------- STARTING TRAINING! ---------------------")
+    accelerator.print("\n--------------------- STARTING TRAINING! ---------------------\n")
     while steps_taken < sample_interval:
         try:
             trainer.step(step_num+1)
 
-            if step_num % args['logging']['save_interval'] == 0:
+            if (step_num + 1) % args['logging']['save_interval'] == 0:
                 trainer.save(step_num+1, save_dir=args["model_scratch_dir"])
 
             steps_taken += 1
             step_num += 1
             state_dict["step_num"] += 1
             steps_bar.update(1)
+
         except Exception as e:
-            print("--------------------- There was an Exception while trying to perform trainer.step()! ---------------------")
-            print(e)
+            accelerator.print("\nThere was an Exception while trying to perform trainer.step()!\n")
+            accelerator.print(e)
             torch.cuda.empty_cache()
             steps_bar.update(0)
             continue
@@ -427,7 +480,7 @@ def main():
     trainer.save(state_dict["step_num"])
     state_dict["last_ckp"] = state_dict["step_num"]
     save_state(state_dict, state_file_path)
-    print(f"state_dict saved: {state_dict}")
+    accelerator.print(f"state_dict saved: {state_dict}")
 
 if __name__ == "__main__":
     main()

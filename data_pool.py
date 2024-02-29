@@ -1,8 +1,9 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from copy import deepcopy
 from pathlib import Path
 import json
 import pickle
+import random
 
 class NLFDataPool:
     def __init__(self, num_feedback_labels: int):
@@ -116,6 +117,40 @@ class QuarkDataPool:
         
         self.quantiles_pool = [self.reward_quantile_tokens[i] for i in quantiles] # quantile idxs mapped to tokens understandable by the tokenizer (newly added)
 
+    def update_DataPool(self, sampling_file, drop_factor: Optional[float] = None) -> None:
+
+        # subsample (uniformly) the existing data_pool data, so as to keep some data sampled in 
+        # previous sampling stages but prioritize the newly sampled data in the current sampling stage.
+        if drop_factor:
+            num_elements_to_keep = int(len(self.prompts_pool) * (1.0 - drop_factor))
+
+            all_indices = list(range(len(self.prompts_pool)))
+            random.shuffle(all_indices)
+
+            indices_to_keep = all_indices[:num_elements_to_keep]
+
+            self.prompts_pool = [self.prompts_pool[i] for i in indices_to_keep]
+            self.responses_pool = [self.responses_pool[i] for i in indices_to_keep]
+            self.scores_pool = [self.scores_pool[i] for i in indices_to_keep]
+
+        # get newly sampled data in the current sampling stage (from sampling json file)
+        prompts, generations, rewards = [], [], []
+        with open(sampling_file, 'r') as input_file:
+            lines = input_file.readlines()
+            for line in lines:
+                entry = json.loads(line)
+                prompt = entry['prompt']
+                generation = entry['generation']
+                reward = entry['reward']
+                prompts.append(prompt)
+                generations.append(generation)
+                rewards.append(reward)
+        
+        # sampling data on the current sampling stage is added to the data_pool,
+        # all the data in the data_pool is sorted by reward scores and assigned
+        # to a reward quantile token
+        self.add(prompts=prompts, responses=generations, scores=rewards)
+
     def get_data(self) -> Tuple[List[str], List[str], List[str]]:
         """
         Get the data from the data pool.
@@ -136,7 +171,7 @@ class QuarkDataPool:
                     'quantile_token': quantile_data,
                     'prompt': prompt_data,
                     'response': response_data,
-                    'reward_score': score_data
+                    'reward': score_data
                 }
                 json.dump(response_dict, f)
                 f.write('\n')
