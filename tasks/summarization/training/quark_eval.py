@@ -118,7 +118,7 @@ class QuarkEvaluator:
                 generations_input_ids = output_dict["input_ids"]
                 generations_attention_mask = output_dict["attention_mask"]
 
-                masks = generations_attention_mask.to(self.policy.device)
+                masks = generations_attention_mask.to(self.ref_policy.device)
 
                 ref_outputs = self.ref_policy.forward_pass(
                     input_ids=input_ids,
