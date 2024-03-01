@@ -355,7 +355,7 @@ def main():
     # Update DataPool with the newly sampled data in the current sampling stage
     sampling_file = f"{args['sampling_dir']}/quark_sampling_data_train_stage_{sampling_stage}.json"
     accelerator.print(f"Updating DataPool with sampling_file from: {sampling_file}")
-    data_pool = data_pool.update_DataPool(
+    data_pool.update_DataPool(
         sampling_file, 
         drop_factor=args['train']['datapool_drop_factor']
     )
