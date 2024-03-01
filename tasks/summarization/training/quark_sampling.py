@@ -62,32 +62,6 @@ class QuarkSampler:
 
     def collate_fn_wrapper(self, batch, best_quantile=True, conditioning=True):
         return self.sampling_prompt_collator(batch, best_quantile=best_quantile, conditioning=conditioning)
-
-    def remove_quantile_from_prompt_input_ids(self,
-                                              input_ids: torch.Tensor,
-                                              attention_mask: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-            input_ids: tensor of shape (batch_size, seq_length) with left-padding and a prepended reward quantile token.
-                e.g., [50256, 50256, 50256,    0,  35,  43,  96, 115] -> 0 to be removed
-                      [50256, 50256,     0, 3445, 245,  15, 4900, 86] -> 0 to be removed
-                      [    0, 1105,     24, 1111,  25, 902, 1500, 10] -> 0 to be removed  
-                    input_ids.shape = [3, 8] -> [3, 7]
-            attention_mask: tensor of shape (batch_size, seq_length) with left-padding and a prepended reward quantile token attention.
-                e.g., [0, 0, 0, 1, 1, 1, 1, 1] -> first 1 to be removed
-                      [0, 0, 1, 1, 1, 1, 1, 1] -> first 1 to be removed
-                      [1, 1, 1, 1, 1, 1, 1, 1] -> first 1 to be removed   
-                      attention_mask.shape = [3, 8] -> [3, 7]
-        """
-        batch_size, seq_length = input_ids.shape
-        first_att_idxs = torch.argmax(attention_mask, dim=1).unsqueeze(1) # shape (batch_size, 1)
-        # define boolean masking
-        mask = torch.arange(seq_length, device=first_att_idxs.device).unsqueeze(0) != first_att_idxs # shape (batch_size, seq_length)
-        # e.g., [True,  True,  True, False, True, True, True, True]
-        #       [True,  True, False,  True, True, True, True, True]
-        #       [False, True,  True,  True, True, True, True, True]
-        input_ids = input_ids[mask].reshape(batch_size, -1)
-        attention_mask = attention_mask[mask].reshape(batch_size, -1)
-        return (input_ids, attention_mask)
         
     def decode(self, 
                tokenizer: AutoTokenizer,
@@ -146,7 +120,10 @@ class QuarkSampler:
                 f.write('\n')
 
 def main():
-    print(f"############### ({args['split']}) quark_sampling.py ###############")
+
+    ################################################################
+    # -------------------- Set up Environment -------------------- #
+    ################################################################
     gc.collect()
     torch.cuda.empty_cache()
     
@@ -155,12 +132,17 @@ def main():
         seed=args['train']['seed'], 
         cuda_deterministic=args['train']['cuda_deterministic'])
     
+    print(f"############### ({args['split']}) quark_sampling.py ###############")
+    
+    num_quantiles = args['train']['num_quantiles']
+    quantile_tokens =  [f"_QUANTILE_TOKEN_{str(quantile_idx)}_" for quantile_idx in range(num_quantiles)]
+
     # Set GPUs
     num_gpus = torch.cuda.device_count()
     print(f'Detected {num_gpus} GPUS')
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-    # Load the state
+    # Load the state from the state_dict
     ensure_dir(args['logging']['save_dir'])
     if args['first_iter'] == "True":
         print("Creating a new state.json file.")
@@ -189,7 +171,10 @@ def main():
     
     print(f'Initializing models ...')
 
-    # -------------- Initialize Tokenizer --------------
+    ################################################################
+    # ------------------- Initialize Tokenizer ------------------- #
+    ################################################################
+
     tokenizer = AutoTokenizer.from_pretrained(
         args['model']['tokenizer']['name_or_path'],
         padding_side=args['model']['policy_model']['input_padding_side'], # left padding
@@ -200,20 +185,21 @@ def main():
         tokenizer.pad_token = tokenizer.eos_token # as GPT-J's tokenizer doesn't have a padding token -> eos_token = bos_token = unk_token = pad_token = "<|endoftext|>", eos_token_id = bos_token_id = unk_token_id = pad_token_id = 50256
         tokenizer.pad_token_id = tokenizer.eos_token_id
     
-    num_quantiles = args['train']['num_quantiles']
-    quantile_tokens =  [f"_QUANTILE_TOKEN_{str(quantile_idx)}_" for quantile_idx in range(num_quantiles)]
-
     # add special reward quantile tokens to the tokenizer
     tokenizer.add_tokens(quantile_tokens, special_tokens=True)
     bad_words_ids = [[tokenizer.convert_tokens_to_ids(quantile_token)] for quantile_token in quantile_tokens]
 
-    # -------------- Initialize Policy to be finetuned --------------
+    ################################################################
+    # ----------- Initialize Policy for sampling data ------------ #
+    ################################################################
+
     policy = Policy(
         model_checkpoint_name=args['model']['policy_model']['name_or_path'],
         device=device,
         tokenizer=tokenizer
     )
     print(f"Pre-trained Policy model correctly loaded to {device}.")
+
     # resize token_embeddings associated to the newly added tokens
     weights = policy.model.get_input_embeddings().weight.detach().cpu().numpy()
     mean_weights, std_weights = np.mean(weights, axis=0), np.std(weights, axis=0)
@@ -223,9 +209,11 @@ def main():
     with torch.no_grad():
         new_inits = torch.tensor(new_inits)
         policy.model.get_input_embeddings().weight[-len(quantile_tokens):, :] = new_inits
+    
+    ################################################################
+    # ------------- Loading Policy Model Checkpoint -------------- #
+    ################################################################    
 
-
-    # ----------------- LOADING MODEL CHECKPOINT -----------------
     if sampling_stage > 1:
         last_ckp = state_dict["last_ckp"]
         last_ckp_path = f"{args['model_dir']}/model_ckp_{last_ckp}.pth"
@@ -234,8 +222,11 @@ def main():
         policy_state_dict = torch.load(last_ckp_path)
         policy.model.load_state_dict(policy_state_dict)
         print(f"Policy model state_dict correctly loaded from {last_ckp_path}.")
-    # ---------------------------------------------------
-        
+    
+    ################################################################
+    # --------------- Setting up Generation config---------------- #
+    ################################################################
+            
     generation_config = GenerationConfig(
         max_length = args["model"]["policy_model"][f"{args['split']}_generation_kwargs"]["max_length"],
         max_new_tokens = args["model"]["policy_model"][f"{args['split']}_generation_kwargs"]["max_new_tokens"],
@@ -250,12 +241,16 @@ def main():
         pad_token_id = tokenizer.pad_token_id, # error if not passed...
     )
 
-    # -------------- Load Sampling datasets and dataloaders --------------
-    print(f'Loading data ...')
+    ################################################################
+    # --------------- Sampling Dataset / Dataloader -------------- #
+    ################################################################
+
+    print('Loading data ...')
     splits = []
     if args['data'][f"{args['split']}_split_name"]:
         splits.append(args['data'][f"{args['split']}_split_name"])
     print(f"Splits: {splits}")
+
     sampling_dataset = TLDRSamplingDataset(
         local_or_remote_path=args['data']['name_or_path'],
         tokenizer=tokenizer,
@@ -289,7 +284,10 @@ def main():
         print(f"Sampling Dev dataset loaded with {len(sampling_dataset)} samples | Sampling Dev dataloader with {len(sampling_dataloader)} batches")
         sampling_stage -= 1
 
-    # -------------- Set up Sampler --------------
+    ################################################################
+    # ------------------------ Set up Sampler -------------------- #
+    ################################################################
+
     sampler = QuarkSampler(
         params=args,
         policy=policy,
@@ -298,7 +296,9 @@ def main():
         generation_config=generation_config,
     )
 
+    print("\n--------------------- STARTING SAMPLING! ---------------------\n")
     sampler.sample(sampling_stage)
+    print("\n--------------------- SAMPLING COMPLETED ---------------------\n")
 
     if args["split"] == "train":
         state_dict["sampling_stage"] += 1

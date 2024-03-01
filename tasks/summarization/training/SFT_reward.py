@@ -11,17 +11,14 @@ from tqdm import tqdm
 from transformers import AutoTokenizer
 import torch
 from torch.utils.data import DataLoader
-import wandb
 
 from utils import set_seed, ensure_dir, WANDB_API_KEY
-from state import load_state, save_state
-from data_pool import QuarkDataPool
 from tasks.summarization.models.reward import GPTRewardModel, MyRMDataCollator, MyRMDataset
 
 # load parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', required=True, help='path to config file')
-parser.add_argument('--split', required=True, help='sampling on train/valid split')
+parser.add_argument('--split', required=True, help='sampling on train/valid/test split')
 args = parser.parse_args()
 split = args.split
 

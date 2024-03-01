@@ -24,7 +24,7 @@ from state import load_state, save_state
 # load parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', required=True, help='path to config file')
-parser.add_argument('--split', required=True, help='sampling on train/valid split')
+parser.add_argument('--split', required=True, help='sampling on train/valid/test split')
 args = parser.parse_args()
 split = args.split
 

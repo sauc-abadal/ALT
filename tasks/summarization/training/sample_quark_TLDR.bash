@@ -6,7 +6,7 @@
 #SBATCH --gres=gpumem:80g
 #SBATCH --mem-per-cpu=96000
 #SBATCH --time=24:00:00
-#SBATCH --output="output/quark_sampling_TLDR_5q_sampling_stage_2.out"
+#SBATCH --output="output/quark_sampling_TLDR_5q_sampling_stage_3.out"
 #SBATCH --open-mode=append
 
 python tasks/summarization/training/quark_sampling.py --config tasks/summarization/training/train_quark_TLDR_single_GPU_config.yml --first_iter False --split train

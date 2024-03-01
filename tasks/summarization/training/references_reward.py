@@ -13,9 +13,7 @@ import torch
 from torch.utils.data import DataLoader
 import wandb
 
-from utils import set_seed, ensure_dir, WANDB_API_KEY
-from state import load_state, save_state
-from data_pool import QuarkDataPool
+from utils import set_seed, ensure_dir
 from tasks.summarization.models.reward import GPTRewardModel, MyRMDataCollator, MyRMDataset
 
 # load parameters

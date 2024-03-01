@@ -1,6 +1,5 @@
 import sys
 sys.path.append("/cluster/project/sachan/sauc/nlf")
-print(sys.path)
 
 import os
 import argparse
@@ -31,19 +30,19 @@ class QuarkEvaluator:
     def __init__(self,
                  params: dict,
                  ref_policy: Policy,
-                 quantile_tokens: List[str],
                  reward_file: str,
                  ) -> None:
         
         self.params = params
-        self.num_quantiles = params['train']['num_quantiles']
         self.ref_policy = ref_policy
         self.ref_policy.model.eval()
         self.reward_file = reward_file
 
-        self.quantile_tokens = quantile_tokens
-        self.best_quantile_token = self.quantile_tokens[0]
-        self.best_quantile_id = self.ref_policy.tokenizer.convert_tokens_to_ids(self.best_quantile_token)
+        self.right_tokenizer = AutoTokenizer.from_pretrained(
+            args['model']['tokenizer']['name_or_path'],
+            padding_side='right', # right padding
+            max_length=args['train']['max_input_length']
+        )
 
     def remove_quantile_from_prompt_input_ids(self,
                                               input_ids: torch.Tensor,
@@ -99,27 +98,35 @@ class QuarkEvaluator:
                 generations.append(generation)
                 rewards.append(reward)
 
+        batch_size = self.params['train']['sampling_batch_size_per_card']
+
         perplexities = []
-        # get ref_logprobs to compute perplexity
-        with torch.no_grad():
-            input_dict = self.ref_policy.tokenizer(prompts, padding=True, truncation=True, return_tensors="pt")
-            input_ids = input_dict["input_ids"]
-            attention_mask = input_dict["attention_mask"]
+        for i in range(0, len(prompts), batch_size):
+            batch_prompts = prompts[i:i + batch_size]
+            batch_generations = generations[i:i + batch_size]
 
-            output_dict = self.ref_policy.tokenizer(generations, padding=True, truncation=True, return_tensors="pt")
-            generations_input_ids = output_dict["input_ids"]
-            generations_attention_mask = output_dict["attention_mask"]
-            masks = generations_attention_mask.to(self.policy.device)
-            ref_outputs = self.ref_policy.forward_pass(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                generated_input_ids=generations_input_ids,
-                generated_attention_mask=generations_attention_mask
-            )
+            # get ref_logprobs to compute perplexity
+            with torch.no_grad():
+                input_dict = self.ref_policy.tokenizer(batch_prompts, padding=True, truncation=True, return_tensors="pt")
+                input_ids = input_dict["input_ids"]
+                attention_mask = input_dict["attention_mask"]
 
-            ref_logprobs = ref_outputs['generated_logprobs']
-            perplexity = torch.exp(-1 * reduce_mean(ref_logprobs, masks.float(), axis=1), dim=1)
-            perplexities.extend(perplexity.cpu().detach().numpy().tolist())
+                output_dict = self.right_tokenizer(batch_generations, padding=True, truncation=True, return_tensors="pt")
+                generations_input_ids = output_dict["input_ids"]
+                generations_attention_mask = output_dict["attention_mask"]
+
+                masks = generations_attention_mask.to(self.policy.device)
+
+                ref_outputs = self.ref_policy.forward_pass(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    generated_input_ids=generations_input_ids,
+                    generated_attention_mask=generations_attention_mask
+                )
+
+                ref_logprobs = ref_outputs['generated_logprobs']
+                perplexity = torch.exp(-1 * reduce_mean(ref_logprobs, masks.float(), axis=1), dim=1)
+                perplexities.extend(perplexity.cpu().detach().numpy().tolist())
 
         rewards = np.array(rewards)
         avg_ppl, avg_reward = np.nanmean(perplexities), np.mean(rewards)
@@ -145,7 +152,10 @@ class QuarkEvaluator:
             out_file.write('\n'.join(lines))
 
 def main():
-    print("############### quark_eval.py ###############")
+
+    ################################################################
+    # -------------------- Set up Environment -------------------- #
+    ################################################################
     gc.collect()
     torch.cuda.empty_cache()
 
@@ -154,6 +164,8 @@ def main():
         seed=args['train']['seed'], 
         cuda_deterministic=args['train']['cuda_deterministic'])
     
+    print("############### quark_eval.py ###############")
+
     # Set GPUs
     num_gpus = torch.cuda.device_count()
     print(f'Detected {num_gpus} GPUS')
@@ -170,7 +182,7 @@ def main():
             id=f"{args['logging']['run_id']}"
         )
 
-    # Load the state
+    # Load the state from the state_dict
     state_file_path = args['train']['state_file_path'] 
     state_dict = load_state(state_file_path)
     sampling_stage = state_dict["sampling_stage"] - 1
@@ -180,48 +192,51 @@ def main():
     args['save_dir'] = args['logging']['save_dir']
     args['sampling_dir'] = os.path.join(args['save_dir'], 'sampling')
     ensure_dir(args['sampling_dir'])
-    print(f"Writing sampling (eval) data to output directory: {args['sampling_dir']}")
-
-    # Save the config file
-    with open(os.path.join(args['save_dir'], 'args.json'), 'w') as f:
-        json.dump(args, f, indent=2)
+    
+    reward_file = f"{args['sampling_dir']}/quark_sampling_data_valid_stage_{sampling_stage}.json"
+    print(f"Writing sampling (eval) data to reward_file: {reward_file}")
 
     print(f'Initializing models ...')
 
-    # -------------- Initialize Tokenizer --------------
+    ################################################################
+    # ------------------- Initialize Tokenizer ------------------- #
+    ################################################################
+
     tokenizer = AutoTokenizer.from_pretrained(
         args['model']['tokenizer']['name_or_path'],
         padding_side=args['model']['policy_model']['input_padding_side'], # left padding
-        max_length=args['train']['max_input_length']) # GPT2Tokenizer -> vocab_size 50257 (id from 0 to 50256) + extra_tokens for efficiency (id from 50257 to 50399) -> 50400 total vocabulary 
+        max_length=args['train']['max_input_length']
+    ) # GPT2Tokenizer -> vocab_size 50257 (id from 0 to 50256) + extra_tokens for efficiency (id from 50257 to 50399) -> 50400 total vocabulary 
     
     if not tokenizer.pad_token:
         print("Setting PAD token to EOS token for open-ended generation.")
         tokenizer.pad_token = tokenizer.eos_token # as GPT-J's tokenizer doesn't have a padding token -> eos_token = bos_token = unk_token = pad_token = "<|endoftext|>", eos_token_id = bos_token_id = unk_token_id = pad_token_id = 50256
         tokenizer.pad_token_id = tokenizer.eos_token_id
     
-    num_quantiles = args['train']['num_quantiles']
-    quantile_tokens =  [f"_QUANTILE_TOKEN_{str(quantile_idx)}_" for quantile_idx in range(num_quantiles)]
+    ################################################################
+    # --------------- Initialize Reference Policy ---------------- #
+    ################################################################
 
-    # add special reward quantile tokens to the tokenizer
-    tokenizer.add_tokens(quantile_tokens, special_tokens=True)
-
-    # -------------- Initialize Reference Policy --------------
     ref_policy = Policy(
         model_checkpoint_name=args['model']['ref_policy']['name_or_path'],
         device=device,
         tokenizer=tokenizer
     )
     print(f"Reference policy loaded to {device}.")
-    reward_file = f"{args['sampling_dir']}/quark_sampling_data_valid_stage_{sampling_stage}.json"
     
-    # -------------- Set up trainer --------------
+    ################################################################
+    # --------------------- Set up Evaluator --------------------- #
+    ################################################################
+
     evaluator = QuarkEvaluator(
         params=args,
         ref_policy=ref_policy,
-        quantile_tokens=quantile_tokens,
         reward_file=reward_file
     )     
+
+    print("\n--------------------- STARTING EVALUATING! ---------------------\n")
     evaluator.eval(sampling_stage, step_num)
+    print("\n--------------------- EVALUATING COMPLETED ---------------------\n")
 
 if __name__ == "__main__":
     main()
