@@ -128,7 +128,7 @@ class QuarkEvaluator:
                 )
 
                 ref_logprobs = ref_outputs['generated_logprobs']
-                perplexity = torch.exp(-1 * reduce_mean(ref_logprobs, masks.float(), axis=1), dim=1)
+                perplexity = torch.exp(-1 * reduce_mean(ref_logprobs, masks.float(), axis=1))
                 perplexities.extend(perplexity.cpu().detach().numpy().tolist())
 
         rewards = np.array(rewards)
