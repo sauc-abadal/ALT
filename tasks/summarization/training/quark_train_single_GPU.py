@@ -366,6 +366,9 @@ def main():
     datapool_save_dict = data_pool.serialize_to_dict(args['save_dir'])
     accelerator.print("Updated DataPool correctly serialized!")
     state_dict["data_pool"] = datapool_save_dict
+
+    # Save training data in training_file (reward quantile tokens used during training)
+    data_pool.save_data_for_training_in_json(args['sampling_dir'], sampling_stage)
     
     ################################################################
     # ------------ Prepare Optimizer and Schedulers -------------- #
