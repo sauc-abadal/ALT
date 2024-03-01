@@ -11,7 +11,7 @@ parser.add_argument('--output_file_prefix', required=True, help='output file pre
 parser.add_argument('--references', required=True, help='boolean, whether the key should be "generation" or "summary"')
 args = parser.parse_args()
 
-def my_function(jsonl_file, output_file_prefix):
+def compute_and_save_corr(jsonl_file, output_file_prefix):
     tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-j-6b")
 
     # Lists to store values
@@ -54,7 +54,7 @@ def my_function(jsonl_file, output_file_prefix):
 
 def main():
     root_path = args.root_path
-    my_function(
+    compute_and_save_corr(
         jsonl_file=f"{root_path}/{args.input_json_file}", 
         output_file_prefix=f"{root_path}/{args.output_file_prefix}")
 

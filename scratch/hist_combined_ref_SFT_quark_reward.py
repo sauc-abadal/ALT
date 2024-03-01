@@ -9,7 +9,7 @@ parser.add_argument('--input_json_files', nargs='+', required=True, help='json f
 parser.add_argument('--output_file_prefixes', nargs='+', required=True, help='output file prefixes')
 args = parser.parse_args()
 
-def compute_stats_and_save_subplots(jsonl_files, output_file_prefixes):
+def compute_and_save_histograms(jsonl_files, output_file_prefixes):
     num_files = len(jsonl_files)
     
     fig, axes = plt.subplots(nrows=num_files, ncols=1, figsize=(18, 6 * num_files))
@@ -57,14 +57,14 @@ def compute_stats_and_save_subplots(jsonl_files, output_file_prefixes):
         ax.set_xlim(common_xlim)
 
     plt.tight_layout()
-    plt.savefig(f"{args.root_path}/individual_reward_histograms.png")
+    plt.savefig(f"{args.root_path}/reward_combined_histograms.png")
     plt.close()
 
-    print(f"Histograms saved to {args.root_path}/individual_reward_histograms.png")
+    print(f"Histograms saved to {args.root_path}/reward_combined_histograms.png")
 
 def main():
     root_path = args.root_path
-    compute_stats_and_save_subplots(
+    compute_and_save_histograms(
         jsonl_files=[f"{root_path}/{json_file}" for json_file in args.input_json_files],
         output_file_prefixes=args.output_file_prefixes)
 

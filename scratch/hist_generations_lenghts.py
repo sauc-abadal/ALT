@@ -11,7 +11,7 @@ parser.add_argument('--output_file_prefix', required=True, help='output file pre
 parser.add_argument('--references', required=True, help='boolean, whether the key should be "generation" or "summary"')
 args = parser.parse_args()
 
-def compute_stats_and_save_histograms(jsonl_file, output_file_prefix):
+def compute_and_save_histogram(jsonl_file, output_file_prefix):
 
     tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-j-6b")
 
@@ -52,14 +52,14 @@ def compute_stats_and_save_histograms(jsonl_file, output_file_prefix):
     plt.legend()
 
     plt.tight_layout()
-    plt.savefig(f"{output_file_prefix}_generations_lengths_histogram.png")
+    plt.savefig(f"{output_file_prefix}_gen_lengths_histogram.png")
     plt.close()
 
-    print(f"Histogram saved to {output_file_prefix}_generations_lengths_histogram.png")
+    print(f"Histogram saved to {output_file_prefix}_gen_lengths_histogram.png")
 
 def main():
     root_path = args.root_path
-    compute_stats_and_save_histograms(
+    compute_and_save_histogram(
         jsonl_file=f"{root_path}/{args.input_json_file}", 
         output_file_prefix=f"{root_path}/{args.output_file_prefix}")
     

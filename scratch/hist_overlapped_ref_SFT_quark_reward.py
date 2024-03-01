@@ -9,7 +9,7 @@ parser.add_argument('--input_json_files', nargs='+', required=True, help='json f
 parser.add_argument('--output_file_prefixes', nargs='+', required=True, help='output file prefixes')
 args = parser.parse_args()
 
-def compute_stats_and_save_histograms(jsonl_files, output_file_prefixes):
+def compute_and_save_histograms(jsonl_files, output_file_prefixes):
     plt.figure(figsize=(18, 6))
     
     for jsonl_file, output_file_prefix in zip(jsonl_files, output_file_prefixes):
@@ -43,14 +43,14 @@ def compute_stats_and_save_histograms(jsonl_files, output_file_prefixes):
     plt.legend()
 
     plt.tight_layout()
-    plt.savefig(f"{args.root_path}/combined_reward_histogram.png")
+    plt.savefig(f"{args.root_path}/reward_overlapped_histograms.png")
     plt.close()
 
-    print(f"Histograms saved to {args.root_path}/combined_reward_histogram.png")
+    print(f"Histograms saved to {args.root_path}/reward_overlapped_histograms.png")
 
 def main():
     root_path = args.root_path
-    compute_stats_and_save_histograms(
+    compute_and_save_histograms(
         jsonl_files=[f"{root_path}/{json_file}" for json_file in args.input_json_files],
         output_file_prefixes=args.output_file_prefixes)
 

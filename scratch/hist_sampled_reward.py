@@ -9,7 +9,7 @@ parser.add_argument('--input_json_file', required=True, help='json file name wit
 parser.add_argument('--output_file_prefix', required=True, help='output file prefix ')
 args = parser.parse_args()
 
-def compute_stats_and_save_histograms(jsonl_file, output_file_prefix):
+def compute_and_save_histogram(jsonl_file, output_file_prefix):
     # Lists to store values
     reward_values = []
 
@@ -44,18 +44,12 @@ def compute_stats_and_save_histograms(jsonl_file, output_file_prefix):
 
     print(f"Histogram saved to {output_file_prefix}_reward_histogram.png")
 
-    # Save computed statistics to a text file
-    with open(f"{output_file_prefix}_reward_statistics.txt", 'w') as output:
-        output.write(f"Reward Mean: {reward_mean}\n")
-        output.write(f"Reward Standard Deviation: {reward_std}\n")
-
-    print(f"Statistics saved to {output_file_prefix}_reward_statistics.txt")
-
 def main():
     root_path = args.root_path
-    compute_stats_and_save_histograms(
+    compute_and_save_histogram(
         jsonl_file=f"{root_path}/{args.input_json_file}", 
-        output_file_prefix=f"{root_path}/{args.output_file_prefix}")
+        output_file_prefix=f"{root_path}/{args.output_file_prefix}"
+    )
     
 if __name__ == "__main__":
     main()

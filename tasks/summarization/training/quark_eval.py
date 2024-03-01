@@ -98,7 +98,7 @@ class QuarkEvaluator:
                 generations.append(generation)
                 rewards.append(reward)
 
-        batch_size = self.params['train']['sampling_batch_size_per_card']
+        batch_size = self.params['train']['training_batch_size_per_card']
 
         perplexities = []
         for i in range(0, len(prompts), batch_size):
