@@ -182,8 +182,8 @@ class QuarkDataPool:
             pickle.dump(self.prompts_pool, f)
         with open(f"{save_path}/responses_pool.pkl", "wb") as f:
             pickle.dump(self.responses_pool, f)
-        with open(f"{save_path}/quantiles_pool.pkl", "wb") as f:
-            pickle.dump(self.quantiles_pool, f)
+        with open(f"{save_path}/scores_pool.pkl", "wb") as f:
+            pickle.dump(self.scores_pool, f)
     
     def load_data_from_files(self, save_path):
         # Load data from files and repopulate internal lists
@@ -191,8 +191,8 @@ class QuarkDataPool:
             self.prompts_pool = pickle.load(f)
         with open(f"{save_path}/responses_pool.pkl", "rb") as f:
             self.responses_pool = pickle.load(f)
-        with open(f"{save_path}/quantiles_pool.pkl", "rb") as f:
-            self.quantiles_pool = pickle.load(f)
+        with open(f"{save_path}/scores_pool.pkl", "rb") as f:
+            self.scores_pool = pickle.load(f)
 
     def serialize_to_dict(self, save_path):
         self.save_data_to_files(save_path)  # Ensure data is saved before storing references
@@ -201,7 +201,7 @@ class QuarkDataPool:
                 "data_file_paths": {
                     "prompts": f"{save_path}/prompts_pool.pkl",
                     "responses": f"{save_path}/responses_pool.pkl",
-                    "quantiles": f"{save_path}/quantiles_pool.pkl"
+                    "scores": f"{save_path}/scores_pool.pkl"
                 },
             }
         }
@@ -212,6 +212,6 @@ class QuarkDataPool:
         data_files = data_pool_info["data_file_paths"]
         self.prompts_pool = pickle.load(open(data_files["prompts"], "rb"))
         self.responses_pool = pickle.load(open(data_files["responses"], "rb"))
-        self.quantiles_pool = pickle.load(open(data_files["quantiles"], "rb"))
+        self.scores_pool = pickle.load(open(data_files["scores"], "rb"))
 
     
