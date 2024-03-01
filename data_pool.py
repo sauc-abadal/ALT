@@ -4,9 +4,10 @@ from pathlib import Path
 import json
 import pickle
 import random
+import os
 
 class NLFDataPool:
-    def __init__(self, num_feedback_labels: int):
+    def __init__(self, num_feedback_labels: Optional[int] = None):
         """
         Initialize a data pool for organizing and managing data.
 
@@ -22,7 +23,7 @@ class NLFDataPool:
         self.feedbacks_labels_pool = []
         self.prompts_pool, self.responses_pool, self.feedbacks_pool = [], [], []
 
-    def add(self, prompts: List[str], responses: List[str], feedbacks: List[str], feedbacks_labels: List[str]):
+    def add(self, prompts: List[str], responses: List[str], feedbacks: List[str], feedbacks_labels: Optional[List[str]] = None):
         """
         Add data to the data pool.
 
@@ -35,9 +36,54 @@ class NLFDataPool:
         """
         self.prompts_pool.extend(prompts)
         self.responses_pool.extend(responses)
-        self.feedbacks_labels.extend(feedbacks)
-        self.feedbacks_labels_pool.extend(feedbacks_labels)
-        
+        self.feedbacks_pool.extend(feedbacks)
+        if feedbacks_labels:
+            self.feedbacks_labels_pool.extend(feedbacks_labels)
+
+    def update_DataPool(self, sampling_file, drop_factor: Optional[float] = None) -> None:
+
+        # subsample (uniformly) the existing data_pool data, so as to keep some data sampled in 
+        # previous sampling stages but prioritize the newly sampled data in the current sampling stage.
+        if drop_factor:
+            num_elements_to_keep = int(len(self.prompts_pool) * (1.0 - drop_factor))
+
+            all_indices = list(range(len(self.prompts_pool)))
+            random.shuffle(all_indices)
+
+            indices_to_keep = all_indices[:num_elements_to_keep]
+
+            self.prompts_pool = [self.prompts_pool[i] for i in indices_to_keep]
+            self.responses_pool = [self.responses_pool[i] for i in indices_to_keep]
+            self.feedbacks_pool = [self.feedbacks_pool[i] for i in indices_to_keep]
+
+            if self.feedbacks_labels_pool:
+                self.feedbacks_labels_pool = [self.feedbacks_labels_pool[i] for i in indices_to_keep]
+
+        # get newly sampled data in the current sampling stage (from sampling json file)
+        prompts, generations, feedbacks = [], [], []
+        feedbacks_labels = []
+        with open(sampling_file, 'r') as input_file:
+            lines = input_file.readlines()
+            for line in lines:
+                entry = json.loads(line)
+                prompt = entry['prompt']
+                generation = entry['generation']
+                feedback = entry['feedback']
+
+                prompts.append(prompt)
+                generations.append(generation)
+                feedbacks.append(feedback)
+
+                if "feedback_label" in entry:
+                    feedback_label = entry['feedback_label']
+                    feedbacks_labels.append(feedback_label)
+                
+        # sampling data on the current sampling stage is added to the data_pool,
+        if feedbacks_labels:
+            self.add(prompts=prompts, responses=generations, feedbacks=feedbacks, feedbacks_labels=feedbacks_labels)    
+        else:
+            self.add(prompts=prompts, responses=generations, feedbacks=feedbacks)  
+
     def get_data(self):
         """
         Get the data from the data pool.
@@ -50,18 +96,86 @@ class NLFDataPool:
         return deepcopy(self.prompts_pool), deepcopy(self.responses_pool), deepcopy(self.feedbacks_pool)
 
     def save_data_for_training_in_json(self, save_path, sampling_stage):
-        # save tuples of (quantile_token, promp, response, score) in reward_file
+        # save tuples of (feedback_label, promp, response, score) in reward_file
         reward_file = Path(save_path) / f"nlf_training_data_stage_{sampling_stage}.json"
-        with reward_file.open('a') as f:
-            for (feedback_data, prompt_data, response_data, feedback_label_data) in zip(self.feedbacks_pool, self.prompts_pool, self.responses_pool, self.feedbacks_labels_pool):
-                response_dict = {
-                    'feedback': feedback_data,
-                    'prompt': prompt_data,
-                    'response': response_data,
-                    'feedback_label': feedback_label_data
+        with reward_file.open('w') as f:
+            if self.feedbacks_labels_pool:
+                for (feedback_label_data, feedback_data, prompt_data, response_data) in zip(self.feedbacks_labels_pool, self.feedbacks_pool, self.prompts_pool, self.responses_pool):
+                    response_dict = {
+                        'feedback_label': feedback_label_data,
+                        'feedback': feedback_data,
+                        'prompt': prompt_data,
+                        'response': response_data,
+                    }
+                    json.dump(response_dict, f)
+                    f.write('\n')
+            else:
+                for (feedback_data, prompt_data, response_data) in zip(self.feedbacks_pool, self.prompts_pool, self.responses_pool):
+                    response_dict = {
+                        'feedback': feedback_data,
+                        'prompt': prompt_data,
+                        'response': response_data,
+                    }
+                    json.dump(response_dict, f)
+                    f.write('\n')
+
+    def save_data_to_files(self, save_path):
+        # Save internal lists to separate files
+        with open(f"{save_path}/prompts_pool.pkl", "wb") as f:
+            pickle.dump(self.prompts_pool, f)
+        with open(f"{save_path}/responses_pool.pkl", "wb") as f:
+            pickle.dump(self.responses_pool, f)
+        with open(f"{save_path}/feedbacks_pool.pkl", "wb") as f:
+            pickle.dump(self.feedbacks_pool, f)
+        if self.feedbacks_labels_pool:
+            with open(f"{save_path}/feedbacks_labels_pool.pkl", "wb") as f:
+                pickle.dump(self.feedbacks_labels_pool, f)
+    
+    def load_data_from_files(self, save_path):
+        # Load data from files and repopulate internal lists
+        with open(f"{save_path}/prompts_pool.pkl", "rb") as f:
+            self.prompts_pool = pickle.load(f)
+        with open(f"{save_path}/responses_pool.pkl", "rb") as f:
+            self.responses_pool = pickle.load(f)
+        with open(f"{save_path}/feedbacks_pool.pkl", "rb") as f:
+            self.feedbacks_pool = pickle.load(f)
+        if os.path.exists(f"{save_path}/feedbacks_labels_pool.pkl"):
+            with open(f"{save_path}/feedbacks_labels_pool.pkl", "rb") as f:
+                self.feedbacks_labels_pool = pickle.load(f)
+
+    def serialize_to_dict(self, save_path):
+        self.save_data_to_files(save_path)  # Ensure data is saved before storing references
+        if self.feedbacks_labels_pool:
+            state_dict = {
+                "data_pool": {
+                    "data_file_paths": {
+                        "prompts": f"{save_path}/prompts_pool.pkl",
+                        "responses": f"{save_path}/responses_pool.pkl",
+                        "feedbacks": f"{save_path}/feedbacks_pool.pkl",
+                        "feedbacks_labels": f"{save_path}/feedbacks_labels_pool.pkl",
+                    },
                 }
-                json.dump(response_dict, f)
-                f.write('\n')
+            }
+        else:
+            state_dict = {
+                "data_pool": {
+                    "data_file_paths": {
+                        "prompts": f"{save_path}/prompts_pool.pkl",
+                        "responses": f"{save_path}/responses_pool.pkl",
+                        "feedbacks": f"{save_path}/feedbacks_pool.pkl",
+                    },
+                }
+            }
+        return state_dict
+
+    def load_from_dict(self, state_dict):
+        data_pool_info = state_dict["data_pool"]
+        data_files = data_pool_info["data_file_paths"]
+        self.prompts_pool = pickle.load(open(data_files["prompts"], "rb"))
+        self.responses_pool = pickle.load(open(data_files["responses"], "rb"))
+        self.feedbacks_pool = pickle.load(open(data_files["feedbacks"], "rb"))
+        if "feedbacks_labels" in data_files: 
+            self.feedbacks_labels_pool = pickle.load(open(data_files["feedbacks_labels"], "rb"))
 
 class QuarkDataPool:
     def __init__(self, reward_quantile_tokens: List[str], num_quantiles: int):

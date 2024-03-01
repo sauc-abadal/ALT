@@ -1,9 +1,8 @@
 from datasets import Dataset, DatasetDict
-from transformers import AutoTokenizer, DataCollatorWithPadding
+from transformers import AutoTokenizer
 import torch
 
-from typing import Union, List, Dict, Optional, Tuple
-import os
+from typing import Union, List, Dict, Optional
 from copy import deepcopy
 
 from data_pool import QuarkDataPool, NLFDataPool

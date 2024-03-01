@@ -83,25 +83,33 @@ class TLDRSamplingDataset():
                 "prompt_attention_mask": prompt_dict["attention_mask"],
                 "summary": example["label"]}
 
-# to be modified... -> NLFTLDRSamplingPromptCollatorWithPadding
-class TLDRSamplingPromptCollatorWithPadding(object):
+class NLFTLDRSamplingPromptCollatorWithPadding(object):
     def __init__(self, tokenizer: AutoTokenizer):
         self.tokenizer = tokenizer
         self.data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer, return_tensors="pt")
     
-    def __call__(self, examples: List[Dict[str, Union[str, List[int]]]]) -> Dict[str, Union[List[str], Dict[str, torch.Tensor]]]:
+    def get_feedback_tokens(self) -> List[int]:
+        pass
+
+    def __call__(
+            self, 
+            examples: List[Dict[str, Union[str, List[int]]]],
+            conditioning=True) -> Dict[str, Union[List[str], Dict[str, torch.Tensor]]]:
         """
         Collate prompts for LLM input by padding already tokenized prompts to the maximum sequence 
-        length in a batch of examples.
+        length in a batch of examples. Also prepend "feedback" tokens to prompt input_ids.
         Args:
             examples: A list of examples, each represented as a dictionary with keys: "prompt" containing the prompt text,
             "prompt_input_ids" and "prompt_attention_mask" with the tokenized prompt text and attention mask respectively, 
             and "summary" containing the human-written summary text.
+            conditioning: boolean indicating whether feedback tokens must be prepended to prompt input_ids or not
+            (in the first sampling step we sample unconditioned).
 
         Returns:
             Dictionary with keys "inputs", "prompts", and "summaries". "inputs" contains 
             a dictionary with keys "input_ids" and "attention_mask", 
-            and values padded tensors of shape (B, S), being S the length of the longest sequence in the batch.
+            and values padded tensors of shape (B, S), being S the length of the longest sequence in the batch,
+            where each element in the batch has been prepended with a feedback token if conditioning=True.
         """
         prompts = [example["prompt"] for example in examples]
         summaries = [example["summary"] for example in examples]
@@ -109,8 +117,24 @@ class TLDRSamplingPromptCollatorWithPadding(object):
         desired_keys = ["prompt_input_ids", "prompt_attention_mask"]
         renamed_keys = ["input_ids", "attention_mask"]
         inputs = [{renamed_keys[i]: example[key] for i, key in enumerate(desired_keys)} for example in examples]
-        inputs = self.data_collator(inputs)
 
+        if conditioning:
+            input_ids = [input_ids_batch["input_ids"] for input_ids_batch in inputs]
+            attention_mask = [attention_mask_batch["attention_mask"] for attention_mask_batch in inputs]
+
+            # preprend feedback tokens to prompt input_ids before left-padding
+            feedback_tokens = self.get_feedback_tokens()
+            input_ids = [feedback_tokens + input_ids_batch for input_ids_batch in input_ids]
+            attention_mask = [[1]*len(feedback_tokens) + attention_mask_batch for attention_mask_batch in attention_mask]
+ 
+            inputs = [
+                {
+                    "input_ids": input_ids_batch,
+                    "attention_mask": attention_mask_batch,
+                }
+            for input_ids_batch, attention_mask_batch in zip(input_ids, attention_mask)]
+
+        inputs = self.data_collator(inputs)
         return {"inputs": inputs, "prompts": prompts, "summaries": summaries}
 
 class QuarkTLDRSamplingPromptCollatorWithPadding(object):
