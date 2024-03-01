@@ -43,6 +43,9 @@ class QuarkEvaluator:
             padding_side='right', # right padding
             max_length=args['train']['max_input_length']
         )
+        if not self.right_tokenizer.pad_token:
+            self.right_tokenizer.pad_token = self.right_tokenizer.eos_token # as GPT-J's tokenizer doesn't have a padding token -> eos_token = bos_token = unk_token = pad_token = "<|endoftext|>", eos_token_id = bos_token_id = unk_token_id = pad_token_id = 50256
+            self.right_tokenizer.pad_token_id = self.right_tokenizer.eos_token_id
 
     def remove_quantile_from_prompt_input_ids(self,
                                               input_ids: torch.Tensor,
