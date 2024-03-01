@@ -239,9 +239,8 @@ def main():
         cuda_deterministic=args['train']['cuda_deterministic']
     )
 
-    accelerator.print("############### quark_train.py ###############")
-
     accelerator = Accelerator()
+    accelerator.print("############### quark_train.py ###############")
     accelerator.print(f"{AcceleratorState()}")
 
     num_quantiles = args['train']['num_quantiles']
