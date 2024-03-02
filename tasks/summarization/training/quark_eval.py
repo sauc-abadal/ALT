@@ -12,6 +12,7 @@ from transformers import AutoTokenizer
 import torch
 import numpy as np
 import wandb
+from tqdm import tqdm
 
 from utils import distinctness, set_seed, ensure_dir, reduce_mean, WANDB_API_KEY
 from tasks.summarization.models.policy import Policy
@@ -104,7 +105,7 @@ class QuarkEvaluator:
         batch_size = self.params['train']['training_batch_size_per_card']
 
         perplexities = []
-        for i in range(0, len(prompts), batch_size):
+        for i in tqdm(range(0, len(prompts), batch_size), desc="Computing perplexity"):
             batch_prompts = prompts[i:i + batch_size]
             batch_generations = generations[i:i + batch_size]
 
@@ -188,9 +189,9 @@ def main():
     # Load the state from the state_dict
     state_file_path = args['train']['state_file_path'] 
     state_dict = load_state(state_file_path)
-    # sampling_stage = state_dict["sampling_stage"] - 1
+    sampling_stage = state_dict["sampling_stage"] - 1
     step_num = state_dict["step_num"]
-    sampling_stage = 1
+
 
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
