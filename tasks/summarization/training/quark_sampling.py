@@ -153,9 +153,8 @@ def main():
     state_dict = load_state(state_file_path)
     if "sampling_stage" not in state_dict:
         state_dict["sampling_stage"] = 1
-    # sampling_stage = state_dict["sampling_stage"]
+    sampling_stage = state_dict["sampling_stage"]
     print(f"state_dict loaded: {state_dict}")
-    sampling_stage = 2
 
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
