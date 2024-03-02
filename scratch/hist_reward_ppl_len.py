@@ -77,7 +77,7 @@ def compute_and_save_histograms(jsonl_file, output_file_prefix):
 
     # Generations Lengths Histogram
     plt.subplot(1, 3, 3)
-    plt.hist(ppl_values, bins=50, color='skyblue', edgecolor='black', alpha=0.7)
+    plt.hist(generations_lens, bins=50, color='skyblue', edgecolor='black', alpha=0.7)
     plt.axvline(len_mean, color='red', linestyle='dashed', linewidth=2, label=f'Mean: {len_mean:.2f}')
     plt.axvspan(len_mean - len_std, len_mean + len_std, alpha=0.2, color='red', label=f'Std: {len_std:.2f}')
     plt.title('Generation Length Histogram')
