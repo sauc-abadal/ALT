@@ -21,23 +21,28 @@ from state import load_state
 # load parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', required=True, help='path to config file')
+parser.add_argument('--references', required=True, help='boolean, whether the key should be "generation" or "summary"')
 args = parser.parse_args()
+references = args.references
 
 # load yaml file
 with open(args.config) as f:
     args = yaml.safe_load(f)
+    args['references'] = references
 
-class QuarkEvaluator:
+class Evaluator:
     def __init__(self,
                  params: dict,
                  ref_policy: Policy,
                  reward_file: str,
+                 references: bool,
                  ) -> None:
         
         self.params = params
         self.ref_policy = ref_policy
         self.ref_policy.model.eval()
         self.reward_file = reward_file
+        self.references = references
 
         self.right_tokenizer = AutoTokenizer.from_pretrained(
             args['model']['tokenizer']['name_or_path'],
@@ -48,25 +53,28 @@ class QuarkEvaluator:
             self.right_tokenizer.pad_token = self.right_tokenizer.eos_token # as GPT-J's tokenizer doesn't have a padding token -> eos_token = bos_token = unk_token = pad_token = "<|endoftext|>", eos_token_id = bos_token_id = unk_token_id = pad_token_id = 50256
             self.right_tokenizer.pad_token_id = self.right_tokenizer.eos_token_id
 
-    def eval(self, sampling_stage, step_num) -> None:
-        print(f"[Sampling stage {sampling_stage}] | Evaluating on the dev set ...")
+    def eval(self) -> None:
+        print(f"Evaluating on the dev set.")
 
-        prompts, generations, rewards = [], [], []
+        if self.references:
+            key = "summary"
+        else:
+            key = "generation"
+
+        prompts, generations = [], []
         with open(self.reward_file, 'r') as input_file:
             lines = input_file.readlines()
             for line in lines:
                 entry = json.loads(line)
                 prompt = entry['prompt']
-                generation = entry['generation']
-                reward = entry['reward']
+                generation = entry[key]
                 prompts.append(prompt)
                 generations.append(generation)
-                rewards.append(reward)
 
         batch_size = self.params['train']['training_batch_size_per_card']
 
         perplexities = []
-        for i in tqdm(range(0, len(prompts), batch_size), desc="Computing perplexity"):
+        for i in tqdm(range(0, len(prompts), batch_size), desc="Computing perplexities..."):
             batch_prompts = prompts[i:i + batch_size]
             batch_generations = generations[i:i + batch_size]
 
@@ -93,19 +101,6 @@ class QuarkEvaluator:
                 perplexity = torch.exp(-1 * reduce_mean(ref_logprobs, masks.float(), axis=1))
                 perplexities.extend(perplexity.cpu().detach().numpy().tolist())
 
-        rewards = np.array(rewards)
-        avg_ppl, avg_reward = np.nanmean(perplexities), np.mean(rewards)
-        dist_1, dist_2, dist_3 = distinctness(generations)
-        print(f"Perplexity: {avg_ppl:+.2f}")
-        print(f"Avg. Reward: {avg_reward:.2f}")
-        print(f"dist-1={dist_1:.3f}, dist-2={dist_2:.3f}, dist-3={dist_3:.3f}")
-        if self.params['logging']['wandb_log']:
-            wandb.log({f'Evaluation/perplexity': avg_ppl}, step=step_num)
-            wandb.log({f'Evaluation/reward': avg_reward}, step=step_num)
-            wandb.log({f'Evaluation/Dist-1': dist_1}, step=step_num)
-            wandb.log({f'Evaluation/Dist-2': dist_2}, step=step_num)
-            wandb.log({f'Evaluation/Dist-3': dist_3}, step=step_num)
-
         # Adding the perplexity scores to each dictionary
         for i, line in enumerate(lines):
             data = json.loads(line)
@@ -129,38 +124,26 @@ def main():
         seed=args['train']['seed'], 
         cuda_deterministic=args['train']['cuda_deterministic'])
     
-    print("############### quark_eval.py ###############")
+    print("############### ref_or_SFT_ppl.py ###############")
+
+    references = bool(args['references'] == "True")
 
     # Set GPUs
     num_gpus = torch.cuda.device_count()
     print(f'Detected {num_gpus} GPUS')
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    
-    # Set wandb logging
-    wandb_log = args['logging']['wandb_log']
-    if wandb_log:
-        wandb.login(key=WANDB_API_KEY)
-        wandb.init(
-            entity=args['logging']['wandb_entity'],
-            project=args['logging']['wandb_project'],
-            name=f"{args['logging']['run_name']}",
-            id=f"{args['logging']['run_id']}"
-        )
-
-    # Load the state from the state_dict
-    state_file_path = args['train']['state_file_path'] 
-    state_dict = load_state(state_file_path)
-    sampling_stage = state_dict["sampling_stage"] - 1
-    step_num = state_dict["step_num"]
-
 
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
     args['sampling_dir'] = os.path.join(args['save_dir'], 'sampling')
     ensure_dir(args['sampling_dir'])
     
-    reward_file = f"{args['sampling_dir']}/quark_sampling_data_valid_stage_{sampling_stage}.json"
-    print(f"Writing sampling (eval) data to reward_file: {reward_file}")
+    if references:
+        reward_file = f"{args['sampling_dir']}/references_data_valid.json"
+    else:
+        reward_file = f"{args['sampling_dir']}/SFT_sampling_data_valid.json"
+
+    print(f"Writing (eval) ppl data to reward_file: {reward_file}")
 
     print(f'Initializing models ...')
 
@@ -194,14 +177,15 @@ def main():
     # --------------------- Set up Evaluator --------------------- #
     ################################################################
 
-    evaluator = QuarkEvaluator(
+    evaluator = Evaluator(
         params=args,
         ref_policy=ref_policy,
-        reward_file=reward_file
+        reward_file=reward_file,
+        references=references
     )     
 
     print("\n--------------------- STARTING EVALUATING! ---------------------\n")
-    evaluator.eval(sampling_stage, step_num)
+    evaluator.eval()
     print("\n--------------------- EVALUATING COMPLETED ---------------------\n")
 
 if __name__ == "__main__":

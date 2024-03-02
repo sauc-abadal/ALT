@@ -6,7 +6,7 @@ from transformers import AutoTokenizer
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--root_path', required=True, help='path to root directory containing the input json file and where output files will be saved')
-parser.add_argument('--input_json_file', required=True, help='json file name with sampled reward data')
+parser.add_argument('--input_json_file', required=True, help='json file name with sampled len data')
 parser.add_argument('--output_file_prefix', required=True, help='output file prefix')
 parser.add_argument('--references', required=True, help='boolean, whether the key should be "generation" or "summary"')
 args = parser.parse_args()
@@ -37,15 +37,15 @@ def compute_and_save_histogram(jsonl_file, output_file_prefix):
     generations_lens = np.array(generations_lens)
 
     # Compute statistics
-    reward_mean = np.mean(generations_lens)
-    reward_std = np.std(generations_lens)
+    len_mean = np.mean(generations_lens)
+    len_std = np.std(generations_lens)
 
     # Plot and save histograms with mean and std
     plt.figure(figsize=(18, 6))
-    # Reward Histogram
-    plt.hist(generations_lens, bins=50, color='blue', edgecolor='black', alpha=0.7)
-    plt.axvline(reward_mean, color='red', linestyle='dashed', linewidth=2, label=f'Mean: {reward_mean:.2f}')
-    plt.axvspan(reward_mean - reward_std, reward_mean + reward_std, alpha=0.2, color='red', label=f'Std: {reward_std:.2f}')
+    # len Histogram
+    plt.hist(generations_lens, bins=50, color='skyblue', edgecolor='black', alpha=0.7)
+    plt.axvline(len_mean, color='red', linestyle='dashed', linewidth=2, label=f'Mean: {len_mean:.2f}')
+    plt.axvspan(len_mean - len_std, len_mean + len_std, alpha=0.2, color='red', label=f'Std: {len_std:.2f}')
     plt.title('Generations lengths Histogram')
     plt.xlabel('Length')
     plt.ylabel('Frequency')

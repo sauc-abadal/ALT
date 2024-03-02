@@ -130,7 +130,7 @@ def main():
     num_quantiles = args['train']['num_quantiles']
     quantile_tokens =  [f"_QUANTILE_TOKEN_{str(quantile_idx)}_" for quantile_idx in range(num_quantiles)]
 
-    # -------------- Initialize Policy to be finetuned --------------
+    # -------------- Initialize SFT Policy --------------
     policy = Policy(
         model_checkpoint_name=args['model']['policy_model']['name_or_path'],
         device=device,
@@ -186,7 +186,7 @@ def main():
             batch_size=args['train']['sampling_batch_size_per_card'],
             shuffle=False,
             drop_last=False,
-            collate_fn=lambda batch: collate_fn_wrapper(batch, conditioning=True)
+            collate_fn=lambda batch: collate_fn_wrapper(batch, conditioning=False)
         )
         print(f"Sampling Dev dataset loaded with {len(sampling_dataset)} samples | Sampling Dev dataloader with {len(sampling_dataloader)} batches")
 
