@@ -5,7 +5,7 @@
 #SBATCH --gpus=a100_80gb:1
 #SBATCH --gres=gpumem:80g
 #SBATCH --mem-per-cpu=96000
-#SBATCH --time=4:00:00
+#SBATCH --time=2:00:00
 #SBATCH --output="output/quark_sampling_and_reward_TLDR_5q_valid_sampling_stage_2.out"
 #SBATCH --open-mode=append
 
