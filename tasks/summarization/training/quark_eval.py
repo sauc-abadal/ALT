@@ -135,7 +135,7 @@ def main():
     num_gpus = torch.cuda.device_count()
     print(f'Detected {num_gpus} GPUS')
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    
+     
     # Set wandb logging
     wandb_log = args['logging']['wandb_log']
     if wandb_log:
@@ -150,9 +150,10 @@ def main():
     # Load the state from the state_dict
     state_file_path = args['train']['state_file_path'] 
     state_dict = load_state(state_file_path)
-    sampling_stage = state_dict["sampling_stage"] - 1
-    step_num = state_dict["step_num"]
-
+    # sampling_stage = state_dict["sampling_stage"] - 1
+    # step_num = state_dict["step_num"]
+    sampling_stage = 1
+    step_num = 5000
 
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
