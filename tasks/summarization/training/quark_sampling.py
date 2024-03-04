@@ -215,8 +215,7 @@ def main():
     ################################################################    
 
     if sampling_stage > 1:
-        # last_ckp = state_dict["last_ckp"]
-        last_ckp = 5000
+        last_ckp = state_dict["last_ckp"]
         last_ckp_path = f"{args['model_dir']}/model_ckp_{last_ckp}.pth"
         print(f"Loading Policy model state_dict from {last_ckp_path}...")
 
