@@ -51,7 +51,7 @@ class NLFTrainingDataset():
         response = example["response"]
         feedback = example["feedback"]
         input_seq = self.feedback_prefix + " " + feedback + " " + self.prompt_prefix + " "  + prompt
-        output_seq = " " + response
+        output_seq = " " + response + self.tokenizer.eos_token
         return {"prompt": prompt,               
                 "input_seq": input_seq,
                 "output_seq": output_seq}
@@ -133,7 +133,7 @@ class QuarkTrainingDataset():
         response = example["response"]
         quantile = example["quantile_token"]
         input_seq = quantile + prompt
-        output_seq = " " + response
+        output_seq = " " + response + self.tokenizer.eos_token
         return {"prompt": prompt,               
                 "input_seq": input_seq,
                 "output_seq": output_seq}
