@@ -7,10 +7,10 @@ data:
 logging:
   log_interval: 1000
   save_interval: 1000
-  run_id: '1867'
-  run_name: quark_TLDR_5q
-  save_dir: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q
-  scratch_dir: /cluster/scratch/sabadal/nlf/quark_TLDR_5q
+  run_id: '1999'
+  run_name: quark_TLDR_5q_v2
+  save_dir: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q_v2
+  scratch_dir: /cluster/scratch/sabadal/nlf/quark_TLDR_5q_v2
   wandb_entity: sauc-ms-thesis
   wandb_log: true
   wandb_project: nlf
@@ -60,7 +60,7 @@ train:
   sample_interval: 5000
   sampling_batch_size_per_card: 32
   seed: 42
-  state_file_path: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q/state.json
+  state_file_path: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q_v2/state.json
   total_episodes: 160000
   training_batch_size_per_card: 8
   unfrozen_layers_ratio: 0.3
