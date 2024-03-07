@@ -8,6 +8,7 @@ import json
 from typing import Dict, List, Tuple, Optional, Union
 import time
 import gc
+import random
 
 from tqdm import tqdm
 from transformers import AutoTokenizer, get_scheduler
@@ -409,10 +410,11 @@ def main():
     ################################################################
 
     accelerator.print("Loading the training dataset and dataloader from the DataPool.")
-    training_dataset = QuarkTrainingDataset(data_pool=data_pool, tokenizer=policy.tokenizer)
+    training_dataset = QuarkTrainingDataset(data_pool=data_pool, tokenizer=policy.tokenizer).dataset['train']
+    random.shuffle(training_dataset)
     training_seq_collator = QuarkTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
     training_dataloader = DataLoader(
-        dataset=training_dataset.dataset["train"],
+        dataset=training_dataset,
         batch_size=args['train']['training_batch_size_per_card'],
         shuffle=True,
         drop_last=True,
