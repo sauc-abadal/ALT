@@ -4,3 +4,4 @@ output/
 trash/
 bash*
 Plots/
+*.ipynb

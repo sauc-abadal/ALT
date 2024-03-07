@@ -478,7 +478,7 @@ def main():
             continue
 
     steps_bar.close()
-
+    
     trainer.save(state_dict["step_num"])
     state_dict["last_ckp"] = state_dict["step_num"]
     save_state(state_dict, state_file_path)

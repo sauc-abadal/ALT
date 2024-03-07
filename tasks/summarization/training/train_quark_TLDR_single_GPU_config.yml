@@ -64,5 +64,5 @@ train:
   total_episodes: 160000
   training_batch_size_per_card: 8
   unfrozen_layers_ratio: 0.3
-  datapool_drop_factor: 0.8
+  datapool_drop_factor: 1.0
 
