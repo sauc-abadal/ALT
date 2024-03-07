@@ -411,7 +411,7 @@ def main():
 
     accelerator.print("Loading the training dataset and dataloader from the DataPool.")
     training_dataset = QuarkTrainingDataset(data_pool=data_pool, tokenizer=policy.tokenizer).dataset['train']
-    random.shuffle(training_dataset)
+    training_dataset = training_dataset.shuffle()
     training_seq_collator = QuarkTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
     training_dataloader = DataLoader(
         dataset=training_dataset,
