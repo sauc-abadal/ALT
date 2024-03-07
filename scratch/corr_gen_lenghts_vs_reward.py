@@ -38,17 +38,17 @@ def compute_and_save_corr(jsonl_file, output_file_prefix):
     rewards = np.array(rewards)
 
     # Plot the correlation between rewards and generation lengths
-    plt.scatter(rewards, generations_lens, color='tomato', alpha=0.2)
+    plt.scatter(generations_lens, rewards, color='tomato', alpha=0.2)
     plt.title('Correlation between Rewards and Generation Lengths')
-    plt.xlabel('Rewards')
-    plt.ylabel('Generation Lengths')
+    plt.ylabel('Rewards')
+    plt.xlabel('Generation Lengths')
 
-    z = np.polyfit(rewards, generations_lens, 1)
+    z = np.polyfit(generations_lens, rewards, 1)
     p = np.poly1d(z)
-    plt.plot(rewards, p(rewards), color='red', linewidth=2)
+    plt.plot(generations_lens, p(generations_lens), color='red', linewidth=2)
 
     # Compute Pearson correlation coefficient
-    correlation_coefficient = np.corrcoef(rewards, generations_lens)[0, 1]
+    correlation_coefficient = np.corrcoef(generations_lens, rewards)[0, 1]
 
     # Display Pearson correlation coefficient in the legend
     plt.legend([f'Pearson Correlation: {correlation_coefficient:.2f}'])
