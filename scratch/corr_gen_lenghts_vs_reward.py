@@ -38,7 +38,7 @@ def compute_and_save_corr(jsonl_file, output_file_prefix):
     rewards = np.array(rewards)
 
     # Plot the correlation between rewards and generation lengths
-    plt.scatter(rewards, generations_lens, color='tomato')
+    plt.scatter(rewards, generations_lens, color='tomato', alpha=0.2)
     plt.title('Correlation between Rewards and Generation Lengths')
     plt.xlabel('Rewards')
     plt.ylabel('Generation Lengths')
