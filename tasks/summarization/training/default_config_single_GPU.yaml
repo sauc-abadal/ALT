@@ -3,7 +3,7 @@ debug: false
 deepspeed_config:
   gradient_accumulation_steps: 1
   offload_optimizer_device: cpu
-  offload_param_device: cpu
+  offload_param_device: none
   zero3_init_flag: false
   zero_stage: 2
 distributed_type: DEEPSPEED
