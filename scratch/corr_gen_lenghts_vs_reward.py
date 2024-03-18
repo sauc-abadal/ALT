@@ -9,10 +9,14 @@ parser.add_argument('--root_path', required=True, help='path to root directory c
 parser.add_argument('--input_json_file', required=True, help='json file name with sampled reward data')
 parser.add_argument('--output_file_prefix', required=True, help='output file prefix')
 parser.add_argument('--references', required=True, help='boolean, whether the key should be "generation" or "summary"')
+parser.add_argument('--pythia', action='store_true', help='whether to use the pythia-410m tokenizer to get the generations lengths or the GPT-J one, if provided -> set to True')
 args = parser.parse_args()
 
 def compute_and_save_corr(jsonl_file, output_file_prefix):
-    tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-j-6b")
+    if args.pythia:
+        tokenizer = AutoTokenizer.from_pretrained("mnoukhov/pythia410m-tldr-sft")
+    else:
+        tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-j-6b")
 
     # Lists to store values
     generations, rewards = [], []

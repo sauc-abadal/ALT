@@ -42,7 +42,7 @@ class QuarkEvaluator:
         self.right_tokenizer = AutoTokenizer.from_pretrained(
             args['model']['tokenizer']['name_or_path'],
             padding_side='right', # right padding
-            max_length=args['train']['max_input_length']
+            model_max_length=args['train']['max_input_length']
         )
         if not self.right_tokenizer.pad_token:
             self.right_tokenizer.pad_token = self.right_tokenizer.eos_token # as GPT-J's tokenizer doesn't have a padding token -> eos_token = bos_token = unk_token = pad_token = "<|endoftext|>", eos_token_id = bos_token_id = unk_token_id = pad_token_id = 50256
@@ -170,7 +170,7 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(
         args['model']['tokenizer']['name_or_path'],
         padding_side=args['model']['policy_model']['input_padding_side'], # left padding
-        max_length=args['train']['max_input_length']
+        model_max_length=args['train']['max_input_length']
     ) # GPT2Tokenizer -> vocab_size 50257 (id from 0 to 50256) + extra_tokens for efficiency (id from 50257 to 50399) -> 50400 total vocabulary 
     
     if not tokenizer.pad_token:

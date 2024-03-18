@@ -9,4 +9,4 @@
 #SBATCH --output="output/SFT_ppl_TLDR.out"
 #SBATCH --open-mode=append
 
-python tasks/summarization/training/ref_or_SFT_ppl.py --config tasks/summarization/training/train_quark_TLDR_single_GPU_config.yml --references False
+python tasks/summarization/training/ref_or_SFT_ppl.py --config tasks/summarization/training/quark_TLDR_config.yml --references False

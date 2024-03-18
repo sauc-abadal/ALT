@@ -2,6 +2,6 @@
 wandb/
 output/
 trash/
-bash*
 Plots/
 *.ipynb
+scratch/.ipynb_checkpoints/

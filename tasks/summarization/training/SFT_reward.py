@@ -12,7 +12,7 @@ from transformers import AutoTokenizer
 import torch
 from torch.utils.data import DataLoader
 
-from utils import set_seed, ensure_dir, WANDB_API_KEY
+from utils import set_seed, ensure_dir
 from tasks.summarization.models.reward import GPTRewardModel, MyRMDataCollator, MyRMDataset
 
 # load parameters

@@ -9,4 +9,4 @@
 #SBATCH --output="output/quark_eval_TLDR_5q_sampling_stage_1.out"
 #SBATCH --open-mode=append
 
-python tasks/summarization/training/quark_eval.py --config tasks/summarization/training/train_quark_TLDR_single_GPU_config.yml
+python tasks/summarization/training/quark_eval.py --config tasks/summarization/training/quark_TLDR_config.yml

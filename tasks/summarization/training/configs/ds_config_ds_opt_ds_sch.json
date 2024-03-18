@@ -11,9 +11,9 @@
         "type": "AdamW",
         "params": {
             "lr": "auto",
-            "weight_decay": "auto",
-            "torch_adam": true,
-            "adam_w_mode": true
+            "betas": [0.8, 0.999],
+            "eps": 1e-8,
+            "weight_decay": "auto"
         }
     },
     "scheduler": {
@@ -26,14 +26,18 @@
         }
     },
     "zero_optimization": {
-      "stage": 2,
-      "allgather_partitions": true,
-      "allgather_bucket_size": 5e8,
-      "contiguous_gradients": true,
-      "offload_optimizer": {
-        "device": "cpu"
-      }
+        "stage": 2,
+        "allgather_partitions": true,
+        "allgather_bucket_size": 5e8,
+        "reduce_scatter": true,
+        "reduce_bucket_size": 5e8,
+        "overlap_comm": true,
+        "contiguous_gradients": true  
     },
-    "gradient_accumulation_steps": 1,
-    "train_micro_batch_size_per_gpu": 8,
+    "gradient_accumulation_steps": "auto",
+    "gradient_clipping": "auto",
+    "steps_per_print": 1000,
+    "train_batch_size": "auto",
+    "train_micro_batch_size_per_gpu": "auto",
+    "wall_clock_breakdown": false
   }
