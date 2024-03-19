@@ -9,6 +9,6 @@
 #SBATCH --output="output/quark_full_eval_TLDR_5q_sampling_stage_1.out"
 #SBATCH --open-mode=append
 
-accelerate launch --config_file /cluster/project/sachan/sauc/nlf/tasks/summarization/training/configs/accelerate_config_1gpu.yaml tasks/summarization/training/quark_sampling.py --config tasks/summarization/training/configs/quark_TLDR_config.yaml --first_iter False --split valid
-mv /cluster/work/sachan/sauc/nlf/quark_TLDR_5q/quark_sampling_data_valid_stage_1_worker_0.json /cluster/work/sachan/sauc/nlf/quark_TLDR_5q/quark_sampling_data_valid_stage_1.json
+mv /cluster/work/sachan/sauc/nlf/quark_TLDR_5q/sampling/quark_sampling_data_valid_stage_1_worker_0.json /cluster/work/sachan/sauc/nlf/quark_TLDR_5q/sampling/quark_sampling_data_valid_stage_1.json
+python tasks/summarization/training/quark_reward.py --config tasks/summarization/training/configs/quark_TLDR_config.yaml --split valid
 python tasks/summarization/training/quark_eval.py --config tasks/summarization/training/configs/quark_TLDR_config.yaml
