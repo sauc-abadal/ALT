@@ -11,4 +11,4 @@
 
 accelerate launch --config_file /cluster/project/sachan/sauc/nlf/tasks/summarization/training/configs/accelerate_config_1gpu.yaml tasks/summarization/training/quark_sampling.py --config tasks/summarization/training/configs/quark_TLDR_config.yml --first_iter False --split train
 mv /cluster/work/sachan/sauc/nlf/quark_TLDR_5q/quark_sampling_data_train_stage_1_worker_0.json /cluster/work/sachan/sauc/nlf/quark_TLDR_5q/quark_sampling_data_train_stage_1.json
-python tasks/summarization/training/quark_reward.py --config tasks/summarization/training/quark_TLDR_config.yml --split train
+python tasks/summarization/training/quark_reward.py --config tasks/summarization/training/configs/quark_TLDR_config.yml --split train
