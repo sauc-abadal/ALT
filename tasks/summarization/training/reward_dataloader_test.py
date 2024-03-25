@@ -72,7 +72,7 @@ class QuarkRewarder:
                 new_lines.append(json.dumps(data))
 
         # Write the modified dictionaries with rewards to the sampling JSONL file
-        with open(f"test_sampling_file_thread_{self.accelerator.local_process_index}", 'w') as out_file:
+        with open(f"/cluster/work/sachan/sauc/nlf/quark_TLDR_5q/sampling/test_sampling_file_thread_{self.accelerator.local_process_index}.json", 'w') as out_file:
             out_file.write('\n'.join(new_lines))
         
 
