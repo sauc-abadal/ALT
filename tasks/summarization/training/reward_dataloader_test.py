@@ -80,7 +80,7 @@ def main():
         cuda_deterministic=args['train']['cuda_deterministic']
     )
     accelerator = Accelerator()
-    accelerator.print(f"############### ({args['split']}) quark_reward.py ###############")
+    accelerator.print(f"############### quark_reward.py ###############")
     
     # Set GPUs
     num_gpus = accelerator.num_processes
