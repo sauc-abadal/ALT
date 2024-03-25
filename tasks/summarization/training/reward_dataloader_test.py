@@ -124,9 +124,7 @@ def main():
     ################################################################
 
     accelerator.print("Preparing Reward dataloader for DDP...")
-    reward_model, rm_dataloader= accelerator.prepare(
-        reward_model, rm_dataloader
-    )
+    rm_dataloader= accelerator.prepare(rm_dataloader)
     accelerator.print("Model and dataloader correctly prepared!")
     accelerator.print(f"After .prepare(): rm_dataloader has {len(rm_dataloader)} batches.")
 
