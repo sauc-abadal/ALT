@@ -282,7 +282,7 @@ def main():
 
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
-    args['sampling_dir'] = os.path.join(args['save_dir'], f'sampling/stage_{sampling_stage}')
+    args['sampling_dir'] = os.path.join(args['save_dir'], f'sampling/stage_1')
     args['model_dir'] = os.path.join(args['save_dir'], 'model')
     if accelerator.is_main_process:
         ensure_dir(args['sampling_dir'])
