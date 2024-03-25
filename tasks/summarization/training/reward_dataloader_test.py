@@ -42,14 +42,16 @@ class QuarkRewarder:
 
     def get_rewards(self) -> None:
         self.accelerator.print(f"Computing rewards ...")
-
+        self.accelerator.wait_for_everyone()
         rewards = []
         with torch.no_grad():
-            for step, rm_batch in tqdm(enumerate(self.reward_dataloader), total=len(self.reward_dataloader)):
+            for step, rm_batch in tqdm(enumerate(self.reward_dataloader), total=len(self.reward_dataloader), disable=not self.accelerator.is_main_process):
+                self.accelerator.wait_for_everyone()
                 print(f"Thread {self.accelerator.local_process_index} - Batch: {rm_batch}")
                 rewards_batch = [self.accelerator.process_index]*len(rm_batch)
                 rewards.extend(rewards_batch)
 
+        self.accelerator.wait_for_everyone()
         print(f"Thread {self.accelerator.local_process_index} - Number of rewards computed: {len(rewards)}")
 
         """
