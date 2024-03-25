@@ -33,12 +33,14 @@ class QuarkRewarder:
                  accelerator: Accelerator,
                  reward_dataloader: DataLoader,
                  sampling_file: str,
+                 batch_size: InterruptedError
                  ) -> None:
         
         self.params = params
         self.accelerator = accelerator
         self.reward_dataloader = reward_dataloader
         self.sampling_file = sampling_file
+        self.batch_size = batch_size
 
     def get_rewards(self) -> None:
         self.accelerator.print(f"Computing rewards ...")
@@ -52,20 +54,27 @@ class QuarkRewarder:
 
         print(f"Thread {self.accelerator.local_process_index} - Number of rewards computed: {len(rewards)}")
 
-        """
         with open(self.sampling_file, 'r') as input_file:
             lines = input_file.readlines()
         
+        indices = list(range(self.accelerator.local_process_index*self.batch_size, len(lines), self.accelerator.num_processes*self.batch_size))
+        new_lines = []
         # Adding the scores to each dictionary
-        for i, line in enumerate(lines):
-            data = json.loads(line)
-            data['reward'] = rewards[i]
-            lines[i] = json.dumps(data)
+        for i, index in enumerate(indices):
+            for sub_index in range(self.batch_size):
+                index_ = index + sub_index 
+                if index_ >= len(lines):
+                    continue
+                
+                line = lines[index_]
+                data = json.loads(line)
+                data['reward'] = rewards[i]
+                new_lines.append(json.dumps(data))
 
         # Write the modified dictionaries with rewards to the sampling JSONL file
-        with open(self.sampling_file, 'w') as out_file:
-            out_file.write('\n'.join(lines))
-        """
+        with open(f"test_sampling_file_thread_{self.accelerator.local_process_index}", 'w') as out_file:
+            out_file.write('\n'.join(new_lines))
+        
 
 def main():
 
@@ -137,7 +146,8 @@ def main():
         params=args,
         accelerator=accelerator,
         reward_dataloader=rm_dataloader,
-        sampling_file=sampling_file
+        sampling_file=sampling_file,
+        batch_size=4
     )
 
     accelerator.print("\n--------------------- STARTING REWARDING! ---------------------\n")
