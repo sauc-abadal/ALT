@@ -130,7 +130,7 @@ def main():
     reward_model = GPTRewardModel(args['reward']['name_or_path'])
 
     if args['reward']['load_state_dict']:
-        rm_state_dict = torch.load(args['reward']['state_dict_path'])
+        rm_state_dict = torch.load(args['reward']['state_dict_path'], map_location="cpu")
         reward_model.load_state_dict(rm_state_dict)
         accelerator.print("Reward Model correctly loaded!")
 

@@ -8,7 +8,7 @@ from typing import List, Optional, Dict, Tuple
 class GPTRewardModel(nn.Module):
     def __init__(self, model_path):
         super().__init__()
-        model = AutoModelForCausalLM.from_pretrained(model_path)
+        model = AutoModelForCausalLM.from_pretrained(model_path, device_map="cpu")
         self.config = model.config
         # `gpt-neo(x)` models use `hidden_size` attribute names instead of `n_embd``
         self.config.n_embd = self.config.hidden_size if hasattr(self.config, "hidden_size") else self.config.n_embd
