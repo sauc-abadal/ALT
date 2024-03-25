@@ -113,7 +113,7 @@ def main():
     """
     sampling_stage = 2
     args['save_dir'] = args['logging']['save_dir']
-    args['sampling_dir'] = os.path.join(args['save_dir'], f'sampling_stage_{sampling_stage}')
+    args['sampling_dir'] = os.path.join(args['save_dir'], f'sampling/stage_{sampling_stage}')
     if accelerator.is_main_process:
         ensure_dir(args['sampling_dir'])
     accelerator.wait_for_everyone()
