@@ -81,7 +81,7 @@ def main():
         seed=args['train']['seed'], 
         cuda_deterministic=args['train']['cuda_deterministic']
     )
-    accelerator = Accelerator()
+    accelerator = Accelerator(even_batches=False)
     accelerator.print(f"############### quark_reward.py ###############")
     
     # Set GPUs
