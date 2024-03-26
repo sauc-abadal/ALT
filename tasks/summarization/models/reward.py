@@ -8,7 +8,7 @@ from typing import List, Optional, Dict, Tuple
 class GPTRewardModel(nn.Module):
     def __init__(self, model_path):
         super().__init__()
-        model = AutoModelForCausalLM.from_pretrained(model_path, device_map="cpu")
+        model = AutoModelForCausalLM.from_pretrained(model_path)
         self.config = model.config
         # `gpt-neo(x)` models use `hidden_size` attribute names instead of `n_embd``
         self.config.n_embd = self.config.hidden_size if hasattr(self.config, "hidden_size") else self.config.n_embd
@@ -132,16 +132,27 @@ class GPTRewardModel(nn.Module):
         return rewards.cpu().tolist()
 
 class MyRMDataset(Dataset):
-        def __init__(self, samples: List[str]):
+    def __init__(self, samples: List[str]):
 
-            self.samples = ["<|startoftext|>" + sample.split("TL;DR:")[0].strip() + "\n" + "TL;DR: " + sample.split("TL;DR:")[1].strip() + "<|endoftext|>" for sample in samples]
+        self.samples = ["<|startoftext|>" + sample.split("TL;DR:")[0].strip() + "\n" + "TL;DR: " + sample.split("TL;DR:")[1].strip() + "<|endoftext|>" for sample in samples]
 
-        def __len__(self):
-            return len(self.samples)
+    def __len__(self):
+        return len(self.samples)
 
-        def __getitem__(self, idx):
-            return self.samples[idx]
+    def __getitem__(self, idx):
+        return self.samples[idx]
 
+class MyRMDataset_v2(Dataset):
+    def __init__(self, samples: List[List[str]]):
+
+        self.samples = [["<|startoftext|>" + responses.split("TL;DR:")[0].strip() + "\n" + "TL;DR: " + responses.split("TL;DR:")[1].strip() + "<|endoftext|>" for responses in prompt] for prompt in samples]
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        return self.samples[idx]
+    
 class MyRMDataCollator:
     def __init__(self, tokenizer: AutoTokenizer, max_length: int):
         self.tokenizer = tokenizer
@@ -160,6 +171,28 @@ class MyRMDataCollator:
         batch["attention_mask"] = encodings_dict["attention_mask"]
         return batch
 
+class MyRMDataCollator_v2:
+    def __init__(self, tokenizer: AutoTokenizer, max_length: int, num_sequences: int):
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+        self.num_sequences = num_sequences
+
+    def __call__(self, data: List[List[str]]):
+        batch = {}
+
+        # assert all prompts in the batch have the same number of generations
+        assert sum([len(data[i]) for i in range(len(data))]) == self.num_sequences*len(data)
+        data = [generation for prompts in data for generation in prompts] # unfold list into a single list of all the generations
+        encodings_dict = self.tokenizer(
+            data,
+            truncation=True,
+            max_length=self.max_length,
+            padding="max_length",
+            return_tensors="pt",
+        )
+        batch["input_ids"] = encodings_dict["input_ids"]
+        batch["attention_mask"] = encodings_dict["attention_mask"]
+        return batch
 
 
     
