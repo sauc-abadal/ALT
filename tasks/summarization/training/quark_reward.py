@@ -155,9 +155,9 @@ def main():
 
     # Save chunk of sampling data into json for writing the reward scores afterward
     lines = lines[start:end]
-    new_sampling_file = f"{sampling_file}_thread_{args['split_number']}"
+    new_sampling_file = f"{sampling_file.split('.')[0]}_thread_{args['split_number']}.json"
     with open(new_sampling_file, 'w') as output_file:
-        output_file.write('\n'.join(lines))
+        output_file.write(lines)
 
     rm_dataset = MyRMDataset(samples=samples[:10])
     rm_collator = MyRMDataCollator(tokenizer=reward_tokenizer, max_length=reward_tokenizer.max_length)
