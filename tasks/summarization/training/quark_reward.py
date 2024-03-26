@@ -146,7 +146,7 @@ def main():
         assert len(samples) == num_generations
         all_samples.append(samples)
 
-    print(f"Sampling file is a json with {len(data_jsonl)} prompts, each prompts has {len(data_jsonl[0]["generations"])} generations.")
+    print(f"Sampling file is a json with {len(data_jsonl)} prompts, each prompts has {len(data_jsonl[0]['generations'])} generations.")
     
     # Split the data into chunks.
     chunk_size = len(all_samples) // args["total_splits"] + 1
