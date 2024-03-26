@@ -56,7 +56,7 @@ class QuarkRewarder:
                 print(f"Thread {self.accelerator.local_process_index} - Batch: {rm_batch}")
                 
                 for x in rm_batch:
-                    rm_batch[x] = rm_batch[x].to(self.reward_model.device)
+                    rm_batch[x] = rm_batch[x].cuda()
                 rewards_batch = self.reward_model.get_reward(**rm_batch)
                 rewards.extend(rewards_batch)
 
