@@ -19,18 +19,21 @@ from tasks.summarization.models.reward import GPTRewardModel, MyRMDataCollator, 
 # load parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', required=True, help='path to config file')
-parser.add_argument('--split', required=True, help='sampling on train/valid split')
+parser.add_argument('--input_sampling_file', required=True, type=str, help='path to input sampling file')
+parser.add_argument('--output_dir', required=True, type=str, help='otuput dir where to save sampling file with rewards')
 parser.add_argument('--split_number', required=True, type=int, help='thread number / split number of the data file')
 parser.add_argument('--total_splits', required=True, type=int, help='total number of threads / splits of the data file')
 args = parser.parse_args()
-split = args.split
+input_sampling_file = args.input_sampling_file
+output_dir = args.output_dir
 split_number = args.split_number
 total_splits = args.total_splits
 
 # load yaml file
 with open(args.config) as f:
     args = yaml.safe_load(f)
-    args['split'] = split
+    args['input_sampling_file'] = input_sampling_file
+    args['output_dir'] = output_dir
     args['split_number'] = split_number
     args['total_splits'] = total_splits
 
@@ -47,9 +50,7 @@ class QuarkRewarder:
         self.reward_dataloader = reward_dataloader
         self.sampling_file = sampling_file
 
-    def get_rewards(self, sampling_stage) -> None:
-        print(f"[Sampling stage {sampling_stage} ({self.params['split']})] Computing rewards ...")
-
+    def get_rewards(self) -> None:
         rewards = []
         with torch.no_grad():
             for step, rm_batch in tqdm(enumerate(self.reward_dataloader), total=len(self.reward_dataloader)):
@@ -64,7 +65,7 @@ class QuarkRewarder:
 
         # Adding the scores to each dictionary
         for i, line in enumerate(lines):
-            if i == 10:
+            if i == 200:
                 break
             data = json.loads(line)
             data['reward'] = rewards[i]
@@ -72,7 +73,7 @@ class QuarkRewarder:
 
         # Write the modified dictionaries with rewards to the sampling JSONL file
         with open(self.sampling_file, 'w') as out_file:
-            out_file.write('\n'.join(lines))
+            out_file.write('\n'.join(lines[:200]) + ''.join(lines[200:]))
 
 def main():
 
@@ -86,27 +87,16 @@ def main():
         seed=args['train']['seed'], 
         cuda_deterministic=args['train']['cuda_deterministic']
     )
-    print(f"############### ({args['split']}) quark_reward.py ###############")
+    print(f"############### quark_reward.py ###############")
     
     # Set GPU device
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     
-    """
-    # Load the state from the state_dict
-    state_file_path = args['train']['state_file_path'] 
-    state_dict = load_state(state_file_path)
-    sampling_stage = state_dict["sampling_stage"] - 1 # sampling_stage variable increased after sampling, but rewarding takes place in the current iteration
-    print(f"state_dict loaded: {state_dict}")
-
-    # Set saving directories
-    """
-    sampling_stage = 2
-    args['save_dir'] = args['logging']['save_dir']
-    args['sampling_dir'] = os.path.join(args['save_dir'], f'sampling/stage_{sampling_stage}')
-    ensure_dir(args['sampling_dir'])
-    
-    sampling_file = f"{args['sampling_dir']}/quark_sampling_data_{args['split']}_stage_{sampling_stage}.json"
-    print(f"Reading/Writing reward data from/to sampling_file: {sampling_file}")
+    sampling_file = args['input_sampling_file']
+    print(f"Reading sampled data from sampling_file: {sampling_file}")
+    save_dir = args['output_dir']
+    print(f"Writing reward data to: {save_dir}")
+    ensure_dir(save_dir)
     
     print(f'Initializing models ...')
     
@@ -155,11 +145,11 @@ def main():
 
     # Save chunk of sampling data into json for writing the reward scores afterward
     lines = lines[start:end]
-    new_sampling_file = f"{sampling_file.split('.')[0]}_thread_{args['split_number']}.json"
+    new_sampling_file = f"{save_dir}/{sampling_file.split('.')[0].split('/')[-1]}_thread_{args['split_number']}.json"
     with open(new_sampling_file, 'w') as output_file:
         output_file.write(''.join(lines))
 
-    rm_dataset = MyRMDataset(samples=samples[:10])
+    rm_dataset = MyRMDataset(samples=samples[:200])
     rm_collator = MyRMDataCollator(tokenizer=reward_tokenizer, max_length=reward_tokenizer.max_length)
     rm_dataloader = DataLoader(
         rm_dataset, 
@@ -180,7 +170,7 @@ def main():
     )
 
     print("\n--------------------- STARTING REWARDING! ---------------------\n")
-    rewarder.get_rewards(sampling_stage)
+    rewarder.get_rewards()
     print("\n--------------------- REWARDING COMPLETED ---------------------\n")
     
 if __name__ == "__main__":
