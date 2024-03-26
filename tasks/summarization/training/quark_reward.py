@@ -21,34 +21,36 @@ from tasks.summarization.models.reward import GPTRewardModel, MyRMDataCollator, 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', required=True, help='path to config file')
 parser.add_argument('--split', required=True, help='sampling on train/valid split')
+parser.add_argument('--split_number', required=True, type=int, help='thread number / split number of the data file')
+parser.add_argument('--total_splits', required=True, type=int, help='total number of threads / splits of the data file')
 args = parser.parse_args()
 split = args.split
+split_number = args.split_number
+total_splits = args.total_splits
 
 # load yaml file
 with open(args.config) as f:
     args = yaml.safe_load(f)
     args['split'] = split
+    args['split_number'] = split_number
+    args['total_splits'] = total_splits
 
 class QuarkRewarder:
     def __init__(self,
                  params: dict,
-                 accelerator: Accelerator,
                  reward_model: GPTRewardModel,
                  reward_dataloader: DataLoader,
                  sampling_file: str,
-                 batch_size: int
                  ) -> None:
         
         self.params = params
-        self.accelerator = accelerator
         self.reward_model = reward_model
         self.reward_dataloader = reward_dataloader
         self.sampling_file = sampling_file
-        self.batch_size = batch_size
 
     def get_rewards(self, sampling_stage) -> None:
-        self.accelerator.print(f"[Sampling stage {sampling_stage} ({self.params['split']})] Computing rewards ...")
-        self.accelerator.wait_for_everyone()
+        print(f"[Sampling stage {sampling_stage} ({self.params['split']})] Computing rewards ...")
+
         rewards = []
         with torch.no_grad():
             for step, rm_batch in tqdm(enumerate(self.reward_dataloader), total=len(self.reward_dataloader), disable=not self.accelerator.is_main_process):
@@ -58,30 +60,20 @@ class QuarkRewarder:
                 rewards_batch = self.reward_model.get_reward(**rm_batch)
                 rewards.extend(rewards_batch)
 
-        print(f"Thread {self.accelerator.local_process_index} - Number of rewards computed: {len(rewards)}")
-        print(f"Thread {self.accelerator.local_process_index} - Rewards: {rewards}")
-
         with open(self.sampling_file, 'r') as input_file:
             lines = input_file.readlines()
-        lines = lines[:50]
-        indices = list(range(self.accelerator.local_process_index*self.batch_size, len(lines), self.accelerator.num_processes*self.batch_size))
-        print(f"Thread {self.accelerator.local_process_index} - Indices: {indices}")
-        new_lines = []
+
         # Adding the scores to each dictionary
-        for i, index in enumerate(indices):
-            for sub_index in range(self.batch_size):
-                index_ = index + sub_index 
-                if index_ >= len(lines):
-                    continue
-                
-                line = lines[index_]
-                data = json.loads(line)
-                data['reward'] = rewards[i+sub_index]
-                new_lines.append(json.dumps(data))
+        for i, line in enumerate(lines):
+            if i == 10:
+                break
+            data = json.loads(line)
+            data['reward'] = rewards[i]
+            lines[i] = json.dumps(data)
 
         # Write the modified dictionaries with rewards to the sampling JSONL file
-        with open(f"/cluster/work/sachan/sauc/nlf/quark_TLDR_5q/sampling/test_sampling_file_thread_{self.accelerator.local_process_index}.json", 'w') as out_file:
-            out_file.write('\n'.join(new_lines))
+        with open(self.sampling_file, 'w') as out_file:
+            out_file.write('\n'.join(lines))
 
 def main():
 
@@ -95,46 +87,41 @@ def main():
         seed=args['train']['seed'], 
         cuda_deterministic=args['train']['cuda_deterministic']
     )
-    accelerator = Accelerator(even_batches=False)
-    accelerator.print(f"############### ({args['split']}) quark_reward.py ###############")
+    print(f"############### ({args['split']}) quark_reward.py ###############")
     
-    # Set GPUs
-    num_gpus = accelerator.num_processes
-    accelerator.print(f'Using {num_gpus} GPUS')
-    device = accelerator.device
+    # Set GPU device
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     
     """
     # Load the state from the state_dict
     state_file_path = args['train']['state_file_path'] 
     state_dict = load_state(state_file_path)
     sampling_stage = state_dict["sampling_stage"] - 1 # sampling_stage variable increased after sampling, but rewarding takes place in the current iteration
-    accelerator.print(f"state_dict loaded: {state_dict}")
+    print(f"state_dict loaded: {state_dict}")
 
     # Set saving directories
     """
     sampling_stage = 2
     args['save_dir'] = args['logging']['save_dir']
     args['sampling_dir'] = os.path.join(args['save_dir'], f'sampling/stage_{sampling_stage}')
-    if accelerator.is_main_process:
-        ensure_dir(args['sampling_dir'])
-    accelerator.wait_for_everyone()
+    ensure_dir(args['sampling_dir'])
     
     sampling_file = f"{args['sampling_dir']}/quark_sampling_data_{args['split']}_stage_{sampling_stage}.json"
-    accelerator.print(f"Reading/Writing reward data from/to sampling_file: {sampling_file}")
+    print(f"Reading/Writing reward data from/to sampling_file: {sampling_file}")
     
-    accelerator.print(f'Initializing models ...')
+    print(f'Initializing models ...')
     
     ################################################################
     # ------------------ Initialize Reward Model ----------------- #
     ################################################################
 
     reward_model = GPTRewardModel(args['reward']['name_or_path'])
-    accelerator.print("base Reward Model correctly loaded!")
+    print("base Reward Model correctly loaded!")
     if args['reward']['load_state_dict']:
-        accelerator.print("Attempting to load Reward Model checkpoint...")
+        print("Attempting to load Reward Model checkpoint...")
         rm_state_dict = torch.load(args['reward']['state_dict_path'], map_location=torch.device('cpu'))
         reward_model.load_state_dict(rm_state_dict)
-        accelerator.print("Reward Model checkpoint correctly loaded!")
+        print("Reward Model checkpoint correctly loaded!")
 
     max_length = args['reward']['max_length']
     reward_tokenizer = AutoTokenizer.from_pretrained(args['model']['tokenizer']['name_or_path'], padding_side="right")
@@ -160,8 +147,20 @@ def main():
             generation = entry['generation']
             sample = prompt + generation
             samples.append(sample)
+    
+    # Split the data into chunks.
+    chunk_size = len(samples) // args["total_splits"] + 1
+    start = (args["split_number"]) * chunk_size
+    end = min((args["split_number"] + 1) * chunk_size, len(samples))
+    samples = samples[start:end]
 
-    rm_dataset = MyRMDataset(samples=samples[:50])
+    # Save chunk of sampling data into json for writing the reward scores afterward
+    lines = lines[start:end]
+    new_sampling_file = f"{sampling_file}_thread_{args['split_number']}"
+    with open(new_sampling_file, 'w') as output_file:
+        output_file.write('\n'.join(lines))
+
+    rm_dataset = MyRMDataset(samples=samples[:10])
     rm_collator = MyRMDataCollator(tokenizer=reward_tokenizer, max_length=reward_tokenizer.max_length)
     rm_dataloader = DataLoader(
         rm_dataset, 
@@ -171,32 +170,19 @@ def main():
         collate_fn=rm_collator)
     
     ################################################################
-    # ---------------------- Set up Accelerator ------------------ #
-    ################################################################
-
-    accelerator.print("Preparing Reward dataloader for DDP...")
-    rm_dataloader= accelerator.prepare(
-        rm_dataloader
-    )
-    accelerator.print("Dataloader correctly prepared!")
-    accelerator.print(f"After .prepare(): rm_dataloader has {len(rm_dataloader)} batches.")
-    
-    ################################################################
     # ---------------------- Set up Rewarder --------------------- #
     ################################################################
         
     rewarder = QuarkRewarder(
         params=args,
-        accelerator=accelerator,
         reward_model=reward_model,
         reward_dataloader=rm_dataloader,
-        sampling_file=sampling_file,
-        batch_size=args['reward']['batch_size']
+        sampling_file=new_sampling_file,
     )
 
-    accelerator.print("\n--------------------- STARTING REWARDING! ---------------------\n")
+    print("\n--------------------- STARTING REWARDING! ---------------------\n")
     rewarder.get_rewards(sampling_stage)
-    accelerator.print("\n--------------------- REWARDING COMPLETED ---------------------\n")
+    print("\n--------------------- REWARDING COMPLETED ---------------------\n")
     
 if __name__ == "__main__":
     main()
