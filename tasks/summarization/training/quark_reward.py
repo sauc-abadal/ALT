@@ -131,7 +131,7 @@ def main():
     accelerator.print("base Reward Model correctly loaded!")
     if args['reward']['load_state_dict']:
         accelerator.print("Attempting to load Reward Model checkpoint...")
-        rm_state_dict = torch.load(args['reward']['state_dict_path'])
+        rm_state_dict = torch.load(args['reward']['state_dict_path'], map_location=torch.device('cpu'))
         reward_model.load_state_dict(rm_state_dict)
         accelerator.print("Reward Model checkpoint correctly loaded!")
 
