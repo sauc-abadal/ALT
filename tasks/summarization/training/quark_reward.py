@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 
 from utils import set_seed, ensure_dir
 from state import load_state
-from tasks.summarization.models.reward import GPTRewardModel, MyRMDataCollator, MyRMDataset
+from tasks.summarization.models.reward import GPTRewardModel, MyRMDataCollatorMultipleGenerations, MyRMDatasetMultipleGenerations
 
 # load parameters
 parser = argparse.ArgumentParser()
@@ -43,12 +43,14 @@ class QuarkRewarder:
                  reward_model: GPTRewardModel,
                  reward_dataloader: DataLoader,
                  sampling_file: str,
+                 num_generations: int
                  ) -> None:
         
         self.params = params
         self.reward_model = reward_model
         self.reward_dataloader = reward_dataloader
         self.sampling_file = sampling_file
+        self.num_generations = num_generations
 
     def get_rewards(self) -> None:
         rewards = []
@@ -65,15 +67,15 @@ class QuarkRewarder:
 
         # Adding the scores to each dictionary
         for i, line in enumerate(lines):
-            if i == 200:
-                break
             data = json.loads(line)
-            data['reward'] = rewards[i]
+            start_idx = i * self.num_generations
+            end_idx = i * self.num_generations + self.num_generations
+            data['rewards'] = rewards[start_idx:end_idx]
             lines[i] = json.dumps(data)
 
         # Write the modified dictionaries with rewards to the sampling JSONL file
         with open(self.sampling_file, 'w') as out_file:
-            out_file.write('\n'.join(lines[:200]) + ''.join(lines[200:]))
+            out_file.write('\n'.join(lines))
 
 def main():
 
@@ -98,16 +100,14 @@ def main():
     print(f"Writing reward data to: {save_dir}")
     ensure_dir(save_dir)
     
-    print(f'Initializing models ...')
-    
     ################################################################
     # ------------------ Initialize Reward Model ----------------- #
     ################################################################
-
+    print('Initializing base Reward Model ...')
     reward_model = GPTRewardModel(args['reward']['name_or_path'])
-    print("base Reward Model correctly loaded!")
+    print("Base Reward Model correctly loaded!")
     if args['reward']['load_state_dict']:
-        print("Attempting to load Reward Model checkpoint...")
+        print("Attempting to load Reward Model checkpoint ...")
         rm_state_dict = torch.load(args['reward']['state_dict_path'], map_location=torch.device('cpu'))
         reward_model.load_state_dict(rm_state_dict)
         print("Reward Model checkpoint correctly loaded!")
@@ -126,16 +126,27 @@ def main():
     # -------------- Rewarding Dataset / Dataloader -------------- #
     ################################################################
 
-    samples = []
-    with open(sampling_file, 'r') as input_file:
-        lines = input_file.readlines()
-        for line in lines:
-            entry = json.loads(line)
-            # rewards are computed on prompts without reward quantile tokens
-            prompt = entry['prompt']
-            generation = entry['generation']
-            sample = prompt + generation
-            samples.append(sample)
+    num_generations = args['reward']['num_generations']
+
+    with open(sampling_file, 'r') as f:
+        data = json.loads(f.read())
+
+    data_jsonl = []
+    all_samples = []
+    for key, value in data.items():
+        prompt = key
+        generations = value[0]
+        assert len(generations) == num_generations
+        my_dict = {
+            "prompt": prompt, 
+            "generations": generations
+        }
+        data_jsonl.append(my_dict)
+        samples = [prompt + generation for generation in generations]
+        assert len(samples) == num_generations
+        all_samples.append(samples)
+
+    print(f"Sampling file is a json with {len(data_jsonl)} prompts, each prompts has {len(data_jsonl[0])} generations.")
     
     # Split the data into chunks.
     chunk_size = len(samples) // args["total_splits"] + 1
@@ -144,13 +155,14 @@ def main():
     samples = samples[start:end]
 
     # Save chunk of sampling data into json for writing the reward scores afterward
-    lines = lines[start:end]
+    data_jsonl = data_jsonl[start:end]
+    data_jsonl = [json.dumps(sample) for sample in data_jsonl]
     new_sampling_file = f"{save_dir}/{sampling_file.split('.')[0].split('/')[-1]}_thread_{args['split_number']}.json"
     with open(new_sampling_file, 'w') as output_file:
-        output_file.write(''.join(lines))
+        output_file.write('\n'.join(data_jsonl))
 
-    rm_dataset = MyRMDataset(samples=samples[:200])
-    rm_collator = MyRMDataCollator(tokenizer=reward_tokenizer, max_length=reward_tokenizer.max_length)
+    rm_dataset = MyRMDatasetMultipleGenerations(samples=samples)
+    rm_collator = MyRMDataCollatorMultipleGenerations(tokenizer=reward_tokenizer, max_length=reward_tokenizer.max_length)
     rm_dataloader = DataLoader(
         rm_dataset, 
         shuffle=False, 
@@ -167,6 +179,7 @@ def main():
         reward_model=reward_model,
         reward_dataloader=rm_dataloader,
         sampling_file=new_sampling_file,
+        num_generations=num_generations
     )
 
     print("\n--------------------- STARTING REWARDING! ---------------------\n")
