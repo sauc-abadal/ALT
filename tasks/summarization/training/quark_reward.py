@@ -76,7 +76,7 @@ class QuarkRewarder:
                 
                 line = lines[index_]
                 data = json.loads(line)
-                data['reward'] = rewards[i]
+                data['reward'] = rewards[i+sub_index]
                 new_lines.append(json.dumps(data))
 
         # Write the modified dictionaries with rewards to the sampling JSONL file
