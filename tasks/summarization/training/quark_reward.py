@@ -146,13 +146,13 @@ def main():
         assert len(samples) == num_generations
         all_samples.append(samples)
 
-    print(f"Sampling file is a json with {len(data_jsonl)} prompts, each prompts has {len(data_jsonl[0])} generations.")
+    print(f"Sampling file is a json with {len(data_jsonl)} prompts, each prompts has {len(data_jsonl[0]["generations"])} generations.")
     
     # Split the data into chunks.
-    chunk_size = len(samples) // args["total_splits"] + 1
+    chunk_size = len(all_samples) // args["total_splits"] + 1
     start = (args["split_number"]) * chunk_size
-    end = min((args["split_number"] + 1) * chunk_size, len(samples))
-    samples = samples[start:end]
+    end = min((args["split_number"] + 1) * chunk_size, len(all_samples))
+    all_samples = all_samples[start:end]
 
     # Save chunk of sampling data into json for writing the reward scores afterward
     data_jsonl = data_jsonl[start:end]
@@ -161,7 +161,7 @@ def main():
     with open(new_sampling_file, 'w') as output_file:
         output_file.write('\n'.join(data_jsonl))
 
-    rm_dataset = MyRMDatasetMultipleGenerations(samples=samples)
+    rm_dataset = MyRMDatasetMultipleGenerations(samples=all_samples)
     rm_collator = MyRMDataCollatorMultipleGenerations(tokenizer=reward_tokenizer, max_length=reward_tokenizer.max_length)
     rm_dataloader = DataLoader(
         rm_dataset, 
