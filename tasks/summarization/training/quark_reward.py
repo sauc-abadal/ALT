@@ -11,7 +11,6 @@ from tqdm import tqdm
 from transformers import AutoTokenizer
 import torch
 from torch.utils.data import DataLoader
-from accelerate import Accelerator
 
 from utils import set_seed, ensure_dir
 from state import load_state
@@ -53,7 +52,7 @@ class QuarkRewarder:
 
         rewards = []
         with torch.no_grad():
-            for step, rm_batch in tqdm(enumerate(self.reward_dataloader), total=len(self.reward_dataloader), disable=not self.accelerator.is_main_process):
+            for step, rm_batch in tqdm(enumerate(self.reward_dataloader), total=len(self.reward_dataloader)):
                 
                 for x in rm_batch:
                     rm_batch[x] = rm_batch[x].cuda()
