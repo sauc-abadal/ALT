@@ -53,18 +53,19 @@ class QuarkRewarder:
         with torch.no_grad():
             for step, rm_batch in tqdm(enumerate(self.reward_dataloader), total=len(self.reward_dataloader), disable=not self.accelerator.is_main_process):
                 
-                print(f"Thread {self.accelerator.local_process_index} - Batch: {rm_batch}")
-                
                 for x in rm_batch:
                     rm_batch[x] = rm_batch[x].cuda()
                 rewards_batch = self.reward_model.get_reward(**rm_batch)
                 rewards.extend(rewards_batch)
 
         print(f"Thread {self.accelerator.local_process_index} - Number of rewards computed: {len(rewards)}")
+        print(f"Thread {self.accelerator.local_process_index} - Rewards: {rewards}")
 
         with open(self.sampling_file, 'r') as input_file:
             lines = input_file.readlines()
+        lines = lines[:50]
         indices = list(range(self.accelerator.local_process_index*self.batch_size, len(lines), self.accelerator.num_processes*self.batch_size))
+        print(f"Thread {self.accelerator.local_process_index} - Indices: {indices}")
         new_lines = []
         # Adding the scores to each dictionary
         for i, index in enumerate(indices):
