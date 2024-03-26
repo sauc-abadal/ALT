@@ -173,18 +173,12 @@ def main():
     # ---------------------- Set up Accelerator ------------------ #
     ################################################################
 
-    accelerator.print("Preparing Reward model and reward dataloader for DDP...")
+    accelerator.print("Preparing Reward dataloader for DDP...")
     rm_dataloader= accelerator.prepare(
         rm_dataloader
     )
-    accelerator.print("Model and dataloader correctly prepared!")
+    accelerator.print("Dataloader correctly prepared!")
     accelerator.print(f"After .prepare(): rm_dataloader has {len(rm_dataloader)} batches.")
-    accelerator.print(f"Reward Model wrapped into {reward_model.__class__.__name__}")
-    accelerator.print(f"Model dtype set to {reward_model.dtype} after accelerator.prepare().")
-    param_types_set = set()
-    for name, param in reward_model.named_parameters():
-        param_types_set.add(param.dtype)
-    accelerator.print(f"Model after accelerator.prepare() have the following dtypes: {param_types_set}")
     
     ################################################################
     # ---------------------- Set up Rewarder --------------------- #
