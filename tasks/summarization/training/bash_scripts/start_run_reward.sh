@@ -6,5 +6,5 @@
 #SBATCH --mem-per-cpu=160G
 #SBATCH --time=2:00:00
 
-python tasks/summarization/training/quark_reward.py --config tasks/summarization/training/configs/quark_TLDR_config_debug.yaml --split train --split_number $1 --total_splits $2
+python tasks/summarization/training/quark_reward.py --config $1 --input_sampling_file $2 --output_dir $3 --split_number $4 --total_splits $5
 
