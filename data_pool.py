@@ -372,7 +372,7 @@ class QuarkDataPool():
                     sampled_quantiles.extend(sublist_quantiles)
 
             return_dict = {
-                "prompt": prompt,
+                "prompt": deepcopy(prompt),
                 "generations": deepcopy(sampled_generations),
                 "quantiles": deepcopy(sampled_quantiles)
             }
