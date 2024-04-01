@@ -81,7 +81,7 @@ class Policy:
         self,
         input_ids: torch.Tensor, # shape (B, seq_len), padding side = "left"
         attention_mask: torch.Tensor, # shape (B, seq_len)
-        generated_input_ids: torch.Tensor, # shape (B, gen_seq_len), padding side "right", final EOS token not attended
+        generated_input_ids: torch.Tensor, # shape (B, gen_seq_len), padding side "right", final EOS token attended
         generated_attention_mask: torch.Tensor, # shape (B, gen_seq_len)
     ):
 
