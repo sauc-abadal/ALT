@@ -326,7 +326,7 @@ class QuarkDataPool():
                 generations = entry['generations']
                 rewards = entry['rewards']
                 prompts.append(prompt)
-                all_generations.append(all_generations)
+                all_generations.append(generations)
                 all_rewards.append(rewards)
         
         # add data to datapool
