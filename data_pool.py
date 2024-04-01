@@ -498,3 +498,23 @@ class QuarkDataPool():
             plt.savefig(f"{save_path}/reward_len_hist_{quantile}.png")
             plt.close()
     
+    def get_num_samples(self):
+        num_prompts = len(self.datapool.keys())
+        total_generations = 0
+        max_generations = 0
+        min_generations = 1e5
+        for prompt in self.datapool.keys():
+            generations = self.datapool[prompt]["generations"]
+            num_generations = len(generations)
+            total_generations += num_generations
+            if num_generations > max_generations:
+                max_generations = num_generations
+            if num_generations < min_generations:
+                min_generations = num_generations
+
+        return {
+            "num_prompts": num_prompts,
+            "total_generations": total_generations,
+            "max_generations": max_generations,
+            "min_generations": min_generations
+        }

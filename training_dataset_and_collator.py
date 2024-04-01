@@ -98,7 +98,7 @@ class QuarkTrainingDataset():
         self, 
         datapool: QuarkDataPool,
         num_samples_per_quantile: int, 
-        tokenizer: AutoTokenizer):
+        eos_token: str):
         """
         Initalizes a Dataset for handling sequences with reward quantile tokens prepended before the prompt.
 
@@ -119,7 +119,7 @@ class QuarkTrainingDataset():
             
         train_dataset = Dataset.from_dict(data_dict)
         raw_dataset = DatasetDict({"train": train_dataset}) 
-        self.tokenizer = tokenizer
+        self.eos_token = eos_token
 
         self.dataset = raw_dataset.map(self.remove_leading_and_trailing_spaces, batched=False)
         self.dataset = self.dataset.map(self.compose_Quark_sequence, batched=False)
@@ -139,7 +139,7 @@ class QuarkTrainingDataset():
         generations = example["generations"]
         quantiles = example["quantiles"]
         input_sequences = [quantile + prompt for quantile in quantiles]
-        output_sequences = [" " + generation + self.tokenizer.eos_token for generation in generations]
+        output_sequences = [" " + generation + self.eos_token for generation in generations]
         
         return {"prompt": prompt,               
                 "input_sequences": input_sequences,

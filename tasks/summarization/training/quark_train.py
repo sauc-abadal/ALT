@@ -29,15 +29,18 @@ from state import load_state, save_state
 # load parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', required=True, help='path to config file')
+parser.add_argument('--sampling_stage', type=int, help='sampling stage, i.e., number of sampling phases carried out')
 parser.add_argument('--ds_optimizer', action='store_true', help='whether we are using a DeepSpeed optimizer or not, if provided -> set to True')
 parser.add_argument('--ds_scheduler', action='store_true', help='whether we are using a DeepSpeed scheduler or not, if provided -> set to True')
 args = parser.parse_args()
+sampling_stage = args.sampling_stage
 ds_optimizer = args.ds_optimizer
 ds_scheduler = args.ds_scheduler
 
 # load yaml file
 with open(args.config) as f:
     args = yaml.safe_load(f)
+    args['sampling_stage'] = sampling_stage
     args['ds_optimizer'] = ds_optimizer
     args['ds_scheduler'] = ds_scheduler
 
@@ -116,7 +119,7 @@ class QuarkTrainer:
 
         try:
             batch = next(self.training_sampler) # dictionary with keys "inputs", "outputs", "prompts", "input_seqs", "output_seqs"
-            assert len(batch["inputs"]["input_ids"]) == self.params['train']['training_batch_size_per_card'], 'insufficent batch'
+            assert len(batch["inputs"]["input_ids"]) == (self.params['train']['training_batch_size_per_card']*self.params['train']['num_samples_per_quantile']*self.params['train']['num_quantiles']), 'insufficent batch'
 
         except (StopIteration, AssertionError):
             self.training_sampler = iter(self.training_dataloader)  # reset iteration to the beginning of data
@@ -161,7 +164,6 @@ class QuarkTrainer:
         )
 
         generated_logits = outputs["generated_logits"] # shape (bs, gen_seq_len, V + num_quantiles)
-        generated_logprobs = outputs["generated_logprobs"] # shape (bs, gen_seq_len)
         generated_entropy = outputs["generated_entropy"] # shape (bs, gen_seq_len)
         lm_loss = outputs["lm_loss"] # shape (bs, gen_seq_len)
 
@@ -182,7 +184,6 @@ class QuarkTrainer:
             )
 
             ref_logits = ref_outputs['generated_logits'] # shape (bs, gen_seq_len, V)
-            ref_logprobs = ref_outputs['generated_logprobs'] # shape (bs, gen_seq_len, V)
 
         kl = torch.sum(self.kl_loss(F.log_softmax(generated_logits, dim=-1), F.softmax(ref_logits, dim=-1)), dim=-1) # shape (bs, gen_seq_len)
         loss = reduce_mean(lm_loss + self.params['train']['kl_coef']*kl - self.params['train']['entropy_coef']*generated_entropy, masks) # shape (1)
@@ -251,7 +252,7 @@ def main():
     torch.cuda.empty_cache()
     # Set seed
     set_seed(
-        seed=args['train']['seed'], 
+        seed=args['train']['seed'] + args["sampling_stage"], 
         cuda_deterministic=args['train']['cuda_deterministic'])
     
     accelerator = Accelerator(log_with="wandb", step_scheduler_with_optimizer=False)
@@ -276,12 +277,21 @@ def main():
             init_kwargs={"wandb": wandb_config}
         )
 
-    # Load the state
+    # Load the state from the state_dict
+    sampling_stage = args["sampling_stage"]
+    if accelerator.is_main_process:
+        ensure_dir(args['logging']['save_dir'])
+        if sampling_stage == 1:
+            accelerator.print("Creating a new state.json file.")
+            with open(args['train']['state_file_path'], "w") as f:
+                json.dump({}, f)
+
+    accelerator.wait_for_everyone() # wait for all threads to ensure save_dir exists and state is created
+    
     state_file_path = args['train']['state_file_path'] 
     state_dict = load_state(state_file_path)
     if "step_num" not in state_dict:
         state_dict["step_num"] = 0
-    sampling_stage = state_dict["sampling_stage"] - 1 # training is occurring in the current sampling stage, despite the variable being already incremented after sampling
     step_num = state_dict["step_num"]
     accelerator.print(f"state_dict loaded: {state_dict}")
 
@@ -401,26 +411,26 @@ def main():
         data_pool.load_from_dict(datapool_load_dict)
         accelerator.print("Existing data_pool correctly loaded.")
     
-    accelerator.print(f"Current DataPool has {len(data_pool.prompts_pool)} samples.")
+    accelerator.print(f"Current DataPool has {data_pool.get_num_samples()}.")
 
     # Update DataPool with the newly sampled data in the current sampling stage
     sampling_file = f"{args['sampling_dir']}/quark_sampling_data_train_stage_{sampling_stage}.json"
     accelerator.print(f"Updating DataPool with sampling_file from: {sampling_file}, drop_factor: {args['train']['datapool_drop_factor']}")
-    data_pool.update_DataPool(
-        sampling_file, 
+    data_pool.update_datapool(
+        sampling_file=sampling_file, 
         drop_factor=args['train']['datapool_drop_factor']
     )
     accelerator.print("DataPool correctly updated!")
-    accelerator.print(f"Updated DataPool has {len(data_pool.prompts_pool)} samples.")
+    accelerator.print(f"Updated DataPool has {data_pool.get_num_samples()}.")
 
     if accelerator.is_main_process:
         # Save new DataPool state to state_dict (state_dict to be saved once training completes)
-        datapool_save_dict = data_pool.serialize_to_dict(args['save_dir'])
+        datapool_save_dict = data_pool.serialize_to_dict(save_path=args['save_dir'])
         accelerator.print("Updated DataPool correctly serialized!")
         state_dict["data_pool"] = datapool_save_dict
 
-        # Save training data in training_file (reward quantile tokens used during training)
-        data_pool.save_data_for_training_in_json(args['sampling_dir'], sampling_stage)
+        # Save updated datapool statistics, i.e., reward/genenerations length histograms for each quantile
+        data_pool.get_data_statistics(save_path=args['sampling_dir'], tokenizer=tokenizer)
 
     accelerator.wait_for_everyone()
 
@@ -449,8 +459,10 @@ def main():
     accelerator.print(f"Finetuning {num_trainable_params/1e9:.2f}/{(num_trainable_params + num_non_trainable_params)/1e9:.2f}B parameters.")
 
     # Initialize new Optimizer and Scheduler
-    total_steps = ceil_div(args['train']['total_episodes'], args['train']['training_batch_size_per_card']*num_gpus)
-    
+    effective_batch_size = args['train']['training_batch_size_per_card'] * num_quantiles * args['train']['num_samples_per_quantile'] * num_gpus
+    total_steps = ceil_div(args['train']['total_episodes'], effective_batch_size)
+    sample_interval = total_steps // args['train']['freq_exploration']
+    warmup_steps = total_steps * args['train']['warmup_ratio']
     if not args['ds_optimizer']:
         accelerator.print("Using a PyTorch optimizer!")
         optimizer = torch.optim.Adam(
@@ -474,7 +486,7 @@ def main():
         accelerator.print("Using a DeepSpeed scheduler!")
         scheduler = DummyScheduler(
             optimizer=optimizer,
-            warmup_num_steps=args['train']['n_warmup_steps'],
+            warmup_num_steps=warmup_steps,
             total_num_steps=total_steps*accelerator.num_processes # required to fix bug and obtain desired behavior
         )
 
@@ -483,7 +495,7 @@ def main():
         scheduler = get_scheduler(
             name='linear',
             optimizer=optimizer,
-            num_warmup_steps=args['train']['n_warmup_steps'],
+            num_warmup_steps=warmup_steps,
             num_training_steps=total_steps
         )
 
@@ -492,7 +504,11 @@ def main():
     ################################################################
 
     accelerator.print("Loading the training dataset and dataloader from the DataPool.")
-    training_dataset = QuarkTrainingDataset(data_pool=data_pool, tokenizer=policy.tokenizer).dataset['train']
+    training_dataset = QuarkTrainingDataset(
+        data_pool=data_pool, 
+        num_samples_per_quantile=args['train']['num_samples_per_quantile'],
+        eos_token=tokenizer.eos_token
+    ).dataset['train']
     training_dataset = training_dataset.shuffle(seed=sampling_stage)
     training_seq_collator = QuarkTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
     training_dataloader = DataLoader(
@@ -544,9 +560,8 @@ def main():
         training_dataloader=training_dataloader,
     )
 
-    sample_interval = args['train']['sample_interval']
     steps_taken = 0
-    steps_bar = tqdm(total=total_steps, initial=step_num, position=0, disable=not accelerator.is_main_process)
+    steps_bar = tqdm(total=sample_interval, initial=steps_taken, position=0, disable=not accelerator.is_main_process)
 
     accelerator.print("\n--------------------- STARTING TRAINING! ---------------------\n")
     while steps_taken < sample_interval:
