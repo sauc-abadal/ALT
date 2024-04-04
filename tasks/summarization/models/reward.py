@@ -141,17 +141,6 @@ class MyRMDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.samples[idx]
-
-class MyRMDatasetMultipleGenerations(Dataset):
-    def __init__(self, samples: List[List[str]]):
-
-        self.samples = [["<|startoftext|>" + text.split("TL;DR:")[0].strip() + "\n" + "TL;DR: " + text.split("TL;DR:")[1].strip() + "<|endoftext|>" for text in sublist] for sublist in samples]
-
-    def __len__(self):
-        return len(self.samples)
-
-    def __getitem__(self, idx):
-        return self.samples[idx]
     
 class MyRMDataCollator:
     def __init__(self, tokenizer: AutoTokenizer, max_length: int):
@@ -160,26 +149,6 @@ class MyRMDataCollator:
 
     def __call__(self, data: List[str]):
         batch = {}
-        encodings_dict = self.tokenizer(
-            data,
-            truncation=True,
-            max_length=self.max_length,
-            padding="max_length",
-            return_tensors="pt",
-        )
-        batch["input_ids"] = encodings_dict["input_ids"]
-        batch["attention_mask"] = encodings_dict["attention_mask"]
-        return batch
-
-class MyRMDataCollatorMultipleGenerations:
-    def __init__(self, tokenizer: AutoTokenizer, max_length: int):
-        self.tokenizer = tokenizer
-        self.max_length = max_length
-
-    def __call__(self, data: List[List[str]]):
-        batch = {}
-
-        data = [text for sublist in data for text in sublist] # unfold list into a single list of all the generations
         encodings_dict = self.tokenizer(
             data,
             truncation=True,

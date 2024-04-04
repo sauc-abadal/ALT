@@ -41,7 +41,7 @@ model:
   tokenizer:
     name_or_path: EleutherAI/gpt-j-6b
 reward:
-  batch_size: 1
+  batch_size: 96
   num_generations: 96
   half: true
   load_state_dict: true

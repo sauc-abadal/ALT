@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 
 from utils import set_seed, ensure_dir
 from state import load_state
-from tasks.summarization.models.reward import GPTRewardModel, MyRMDataCollatorMultipleGenerations, MyRMDatasetMultipleGenerations
+from tasks.summarization.models.reward import GPTRewardModel, MyRMDataCollator, MyRMDataset
 
 # load parameters
 parser = argparse.ArgumentParser()
@@ -127,42 +127,33 @@ def main():
     ################################################################
 
     num_generations = args['reward']['num_generations']
-
-    with open(sampling_file, 'r') as f:
-        data = json.loads(f.read())
-
-    data_jsonl = []
-    all_samples = []
-    for key, value in data.items():
-        prompt = key
-        generations = value[0]
-        assert len(generations) == num_generations
-        my_dict = {
-            "prompt": prompt, 
-            "generations": generations
-        }
-        data_jsonl.append(my_dict)
-        samples = [prompt + generation for generation in generations]
-        assert len(samples) == num_generations
-        all_samples.append(samples)
-
-    print(f"Sampling file is a json with {len(data_jsonl)} prompts, each prompts has {len(data_jsonl[0]['generations'])} generations.")
     
+    all_samples = []
+    with open(sampling_file, 'r') as f:
+        lines = f.readline()
+        for line in lines:
+            entry = json.loads(line)
+            prompt = entry["prompt"]
+            generations = entry["generations"]
+            assert len(generations) == num_generations
+            samples = [prompt + generation for generation in generations]
+            all_samples.append(samples)
+    
+    print(f"Read a total of {len(all_samples)} samples from sampling_file.")
     # Split the data into chunks.
     chunk_size = len(all_samples) // args["total_splits"] + 1
     start = (args["split_number"]) * chunk_size
     end = min((args["split_number"] + 1) * chunk_size, len(all_samples))
     all_samples = all_samples[start:end]
-
+    
     # Save chunk of sampling data into json for writing the reward scores afterward
-    data_jsonl = data_jsonl[start:end]
-    data_jsonl = [json.dumps(sample) for sample in data_jsonl]
+    lines = lines[start:end]
     new_sampling_file = f"{save_dir}/{sampling_file.split('.')[0].split('/')[-1]}_thread_{args['split_number']}.json"
     with open(new_sampling_file, 'w') as output_file:
-        output_file.write('\n'.join(data_jsonl))
+        output_file.write('\n'.join(lines))
 
-    rm_dataset = MyRMDatasetMultipleGenerations(samples=all_samples)
-    rm_collator = MyRMDataCollatorMultipleGenerations(tokenizer=reward_tokenizer, max_length=reward_tokenizer.max_length)
+    rm_dataset = MyRMDataset(samples=all_samples)
+    rm_collator = MyRMDataCollator(tokenizer=reward_tokenizer, max_length=reward_tokenizer.max_length)
     rm_dataloader = DataLoader(
         rm_dataset, 
         shuffle=False, 
