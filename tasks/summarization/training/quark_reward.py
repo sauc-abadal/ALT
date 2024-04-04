@@ -112,10 +112,7 @@ def main():
         reward_model.load_state_dict(rm_state_dict)
         print("Reward Model checkpoint correctly loaded!")
 
-    max_length = args['reward']['max_length']
-    reward_tokenizer = AutoTokenizer.from_pretrained(args['model']['tokenizer']['name_or_path'], padding_side="right")
-    reward_tokenizer.pad_token = reward_tokenizer.eos_token
-    reward_tokenizer.max_length = max_length
+    reward_model.tokenizer.max_length = args['reward']['max_length']
     
     if args['reward']['half']:
         reward_model.half()
@@ -130,7 +127,7 @@ def main():
     
     all_samples = []
     with open(sampling_file, 'r') as f:
-        lines = f.readline()
+        lines = f.readlines()
         for line in lines:
             entry = json.loads(line)
             prompt = entry["prompt"]
@@ -153,7 +150,7 @@ def main():
         output_file.write('\n'.join(lines))
 
     rm_dataset = MyRMDataset(samples=all_samples)
-    rm_collator = MyRMDataCollator(tokenizer=reward_tokenizer, max_length=reward_tokenizer.max_length)
+    rm_collator = MyRMDataCollator(tokenizer=reward_model.tokenizer, max_length=reward_model.tokenizer.max_length)
     rm_dataloader = DataLoader(
         rm_dataset, 
         shuffle=False, 
