@@ -8,20 +8,18 @@ import json
 import gc
 
 from tqdm import tqdm
-from transformers import AutoTokenizer
 import torch
 from torch.utils.data import DataLoader
 
 from utils import set_seed, ensure_dir
-from state import load_state
 from tasks.summarization.models.reward import GPTRewardModel, MyRMDataCollator, MyRMDataset
 
 # load parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', required=True, help='path to config file')
-parser.add_argument('--input_sampling_file', required=True, type=str, help='path to input sampling file')
-parser.add_argument('--output_dir', required=True, type=str, help='otuput dir where to save sampling file with rewards')
-parser.add_argument('--split_number', required=True, type=int, help='thread number / split number of the data file')
+parser.add_argument('--input_sampling_file', required=True, type=str, help='path to input sampling file in JSONL format containing dicts with "prompt": str, "generations": List[str] as keys and values for every line.')
+parser.add_argument('--output_dir', required=True, type=str, help='otuput dir where to save sampling file with the computed rewards in JSONL format by adding the key "reward": List[float] to every line')
+parser.add_argument('--split_number', required=True, type=int, help='thread number / split number of the data file, in range 0..total_splits-1')
 parser.add_argument('--total_splits', required=True, type=int, help='total number of threads / splits of the data file')
 args = parser.parse_args()
 input_sampling_file = args.input_sampling_file
@@ -134,20 +132,23 @@ def main():
             generations = entry["generations"]
             assert len(generations) == num_generations
             samples = [prompt + generation for generation in generations]
-            all_samples.append(samples)
+            all_samples.extend(samples)
     
     print(f"Read a total of {len(all_samples)} samples from sampling_file.")
     # Split the data into chunks.
-    chunk_size = len(all_samples) // args["total_splits"] + 1
+    chunk_size = len(all_samples) // args["total_splits"] 
     start = (args["split_number"]) * chunk_size
     end = min((args["split_number"] + 1) * chunk_size, len(all_samples))
     all_samples = all_samples[start:end]
+    print(f"Thread {args['split_number']} processing {len(all_samples)} samples.")
     
     # Save chunk of sampling data into json for writing the reward scores afterward
-    lines = lines[start:end]
+    start_ = int(start/num_generations)
+    end_ = int(end/num_generations)
+    lines = lines[start_:end_]
     new_sampling_file = f"{save_dir}/{sampling_file.split('.')[0].split('/')[-1]}_thread_{args['split_number']}.json"
     with open(new_sampling_file, 'w') as output_file:
-        output_file.write('\n'.join(lines))
+        output_file.write(''.join(lines))
 
     rm_dataset = MyRMDataset(samples=all_samples)
     rm_collator = MyRMDataCollator(tokenizer=reward_model.tokenizer, max_length=reward_model.tokenizer.max_length)
