@@ -584,7 +584,7 @@ class QuarkDataPool():
             avg_l_hist = np.sum(l_histograms, axis=0) / len(l_histograms)
             
             # Plot and save histograms with mean and std
-            plt.figure(figsize=(18, 6))
+            plt.figure(figsize=(18, 6), facecolor='white')
 
             # Reward Histogram
             plt.subplot(1, 2, 1)
