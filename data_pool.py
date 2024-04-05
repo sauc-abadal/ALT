@@ -403,7 +403,8 @@ class QuarkDataPool():
         self.datapool = pickle.load(open(data_file_path, "rb"))
         self.num_quantiles = num_quantiles
         self.reward_quantile_tokens = reward_quantile_tokens
-        
+
+    """
     def get_data_statistics(self, save_path: Union[str, os.PathLike], tokenizer: AutoTokenizer, num_bins=50):
         # compute reward and generations length statistics for every quantile accross all prompts
         reward_stats = []
@@ -487,6 +488,119 @@ class QuarkDataPool():
             # Generations Lengths Histogram
             plt.subplot(1, 2, 2)
             plt.bar(new_l_bins[:-1], avg_l_hist, width=np.diff(new_l_bins), align="edge", color='skyblue', edgecolor='black', alpha=0.7)
+            plt.axvline(l_mean, color='red', linestyle='dashed', linewidth=2, label=f'Mean: {l_mean:.2f}')
+            plt.axvspan(l_mean - l_std, l_mean + l_std, alpha=0.2, color='red', label=f'Std: {l_std:.2f}')
+            plt.title('Generations Length Histogram')
+            plt.xlabel('len')
+            plt.ylabel('Frequency')
+            plt.legend()
+
+            plt.tight_layout()
+            plt.savefig(f"{save_path}/reward_len_hist_{quantile}.png")
+            plt.close()
+    """
+
+    def get_data_statistics(self, save_path: Union[str, os.PathLike], tokenizer: AutoTokenizer, num_bins=100):
+        # compute min and max reward/length to align histogram edges
+        min_reward, max_reward = 1000, -1000
+        min_len, max_len = 0, 5000
+        for prompt in self.datapool.keys():
+            rewards = self.datapool[prompt]["rewards"]
+            generations = self.datapool[prompt]["generations"]
+            encoded_generations = tokenizer(generations)["input_ids"]
+            generations_length = [len(encoded_generation) for encoded_generation in encoded_generations]
+            min_r = np.min(rewards)
+            max_r = np.max(rewards)
+            min_l = np.min(generations_length)
+            max_l = np.max(generations_length)
+            min_reward = min(min_reward, min_r)
+            max_reward = max(max_reward, max_r)
+            min_len = min(min_len, min_l)
+            max_len = max(max_len, max_l)
+        
+        edges_r = np.linspace(min_reward, max_reward, num_bins + 1)
+        edges_l = np.linspace(min_len, max_len, num_bins + 1)
+
+        # compute reward and generations length statistics for every quantile accross all prompts
+        reward_stats = []
+        length_stats = []
+        for prompt in self.datapool.keys():
+            generations = self.datapool[prompt]["generations"]
+            rewards = self.datapool[prompt]["rewards"]
+            quantiles = self.datapool[prompt]["quantiles"]
+            
+            reward_quantile_stats = {}
+            length_quantile_stats = {}
+            for quantile in self.reward_quantile_tokens:
+                sublist_indices = [i for i, x in enumerate(quantiles) if x == quantile]
+
+                sublist_generations = [generations[i] for i in sublist_indices]
+                sublist_rewards = [rewards[i] for i in sublist_indices]
+                
+                encoded_generations = tokenizer(sublist_generations)["input_ids"]
+                generations_length = [len(encoded_generation) for encoded_generation in encoded_generations]
+                sublist_rewards = np.array(sublist_rewards)
+                
+                reward_mean = np.mean(sublist_rewards)
+                reward_std = np.std(sublist_rewards)
+                reward_hist, _ = np.histogram(sublist_rewards, bins=edges_r)
+                reward_quantile_stats[quantile] = {
+                    "mean": reward_mean,
+                    "std": reward_std,
+                    "hist": reward_hist,
+                }
+                
+                len_mean = np.mean(generations_length)
+                len_std = np.std(generations_length)
+                len_hist, _ = np.histogram(generations_length, bins=edges_l)
+                length_quantile_stats[quantile] = {
+                    "mean": len_mean,
+                    "std": len_std,
+                    "hist": len_hist,
+                }
+            
+            reward_stats.append(reward_quantile_stats)
+            length_stats.append(length_quantile_stats)
+        
+        for quantile in self.reward_quantile_tokens:
+            r_mean, r_std, r_histograms, r_bins = [], [], [], []
+            l_mean, l_std, l_histograms, l_bins = [], [], [], []
+            for r_stats, l_stats in zip(reward_stats, length_stats):
+                
+                r_mean.append(r_stats[quantile]["mean"])
+                r_std.append(r_stats[quantile]["std"])
+                r_histograms.append(r_stats[quantile]["hist"])
+                r_bins.append(r_stats[quantile]["bins"])
+                
+                l_mean.append(l_stats[quantile]["mean"])
+                l_std.append(l_stats[quantile]["std"])
+                l_histograms.append(l_stats[quantile]["hist"])
+                l_bins.append(l_stats[quantile]["bins"])
+            
+            r_mean = np.mean(r_mean)
+            r_std = np.mean(r_std)
+            avg_r_hist = np.sum(r_histograms, axis=0) / len(r_histograms)
+            
+            l_mean = np.mean(l_mean)
+            l_std = np.mean(l_std)
+            avg_l_hist = np.sum(l_histograms, axis=0) / len(l_histograms)
+            
+            # Plot and save histograms with mean and std
+            plt.figure(figsize=(18, 6))
+
+            # Reward Histogram
+            plt.subplot(1, 2, 1)
+            plt.bar(edges_r[:-1], avg_r_hist, width=np.diff(edges_r), align="edge", color='salmon', edgecolor='black', alpha=0.7)
+            plt.axvline(r_mean, color='red', linestyle='dashed', linewidth=2, label=f'Mean: {r_mean:.2f}')
+            plt.axvspan(r_mean - r_std, r_mean + r_std, alpha=0.2, color='red', label=f'Std: {r_std:.2f}')
+            plt.title('Reward Histogram')
+            plt.xlabel('Reward')
+            plt.ylabel('Frequency')
+            plt.legend()
+
+            # Generations Lengths Histogram
+            plt.subplot(1, 2, 2)
+            plt.bar(edges_l[:-1], avg_l_hist, width=np.diff(edges_l), align="edge", color='skyblue', edgecolor='black', alpha=0.7)
             plt.axvline(l_mean, color='red', linestyle='dashed', linewidth=2, label=f'Mean: {l_mean:.2f}')
             plt.axvspan(l_mean - l_std, l_mean + l_std, alpha=0.2, color='red', label=f'Std: {l_std:.2f}')
             plt.title('Generations Length Histogram')
