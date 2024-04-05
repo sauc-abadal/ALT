@@ -114,8 +114,8 @@ class QuarkTrainingDataset():
         }
         for sample in samples:
             data_dict["prompt"].extend([sample["prompt"]] * len(sample["generations"]))
-            data_dict["generations"].extend(sample["generations"])
-            data_dict["quantiles"].extend(sample["quantiles"])
+            data_dict["generation"].extend(sample["generations"])
+            data_dict["quantile"].extend(sample["quantiles"])
             
         train_dataset = Dataset.from_dict(data_dict)
         raw_dataset = DatasetDict({"train": train_dataset}) 
