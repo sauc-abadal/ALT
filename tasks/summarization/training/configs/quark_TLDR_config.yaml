@@ -6,8 +6,8 @@ data:
   valid_split_name: valid
 logging:
   log_interval: 500
-  save_interval: 10
-  run_id: '19999'
+  save_interval: 500
+  run_id: '19997'
   run_name: quark_TLDR_5q_v6
   save_dir: /cluster/work/sachan/sauc/nlf/quark_TLDR_5q_v6
   scratch_dir: /cluster/scratch/sabadal/nlf/quark_TLDR_5q_v6
@@ -61,7 +61,7 @@ train:
   seed: 42
   total_episodes: 40960
   warmup_ratio: 0.05
-  training_batch_size_per_card: 8
+  training_batch_size_per_card: 4
   num_samples_per_quantile: 2
   unfrozen_layers_ratio: 0.3
   datapool_drop_factor: 1.0
