@@ -234,7 +234,7 @@ def main():
         cuda_deterministic=args['train']['cuda_deterministic'])
     
     accelerator = Accelerator(log_with="wandb", step_scheduler_with_optimizer=False)
-    accelerator.print("############### quark_train.py ###############")
+    accelerator.print("############### quark_train_noKL.py ###############")
     accelerator.print(f"{AcceleratorState()}")
     device = accelerator.device
     num_gpus = accelerator.num_processes
@@ -462,7 +462,7 @@ def main():
 
     accelerator.print("Loading the training dataset and dataloader from the DataPool.")
     training_dataset = QuarkTrainingDataset(
-        data_pool=data_pool, 
+        datapool=data_pool, 
         num_samples_per_quantile=args['train']['num_samples_per_quantile'],
         eos_token=tokenizer.eos_token
     ).dataset['train']
