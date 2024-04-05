@@ -563,19 +563,17 @@ class QuarkDataPool():
             length_stats.append(length_quantile_stats)
         
         for quantile in self.reward_quantile_tokens:
-            r_mean, r_std, r_histograms, r_bins = [], [], [], []
-            l_mean, l_std, l_histograms, l_bins = [], [], [], []
+            r_mean, r_std, r_histograms = [], [], []
+            l_mean, l_std, l_histograms = [], [], []
             for r_stats, l_stats in zip(reward_stats, length_stats):
                 
                 r_mean.append(r_stats[quantile]["mean"])
                 r_std.append(r_stats[quantile]["std"])
                 r_histograms.append(r_stats[quantile]["hist"])
-                r_bins.append(r_stats[quantile]["bins"])
                 
                 l_mean.append(l_stats[quantile]["mean"])
                 l_std.append(l_stats[quantile]["std"])
                 l_histograms.append(l_stats[quantile]["hist"])
-                l_bins.append(l_stats[quantile]["bins"])
             
             r_mean = np.mean(r_mean)
             r_std = np.mean(r_std)
