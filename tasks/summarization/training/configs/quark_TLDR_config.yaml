@@ -61,7 +61,7 @@ train:
   seed: 42
   total_episodes: 40960
   warmup_ratio: 0.05
-  training_batch_size_per_card: 4
+  training_batch_size_per_card: 8
   num_samples_per_quantile: 2
   unfrozen_layers_ratio: 0.3
   datapool_drop_factor: 1.0

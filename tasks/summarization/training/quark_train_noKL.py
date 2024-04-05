@@ -117,7 +117,7 @@ class QuarkTrainer:
 
         try:
             batch = next(self.training_sampler) # dictionary with keys "inputs", "outputs", "prompts", "input_seqs", "output_seqs"
-            assert len(batch["inputs"]["input_ids"]) == (self.params['train']['training_batch_size_per_card']*self.params['train']['num_samples_per_quantile']*self.params['train']['num_quantiles']), 'insufficent batch'
+            assert len(batch["inputs"]["input_ids"]) == self.params['train']['training_batch_size_per_card'], 'insufficent batch'
 
         except (StopIteration, AssertionError):
             self.training_sampler = iter(self.training_dataloader)  # reset iteration to the beginning of data
