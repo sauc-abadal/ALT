@@ -51,7 +51,6 @@ class QuarkTrainer:
     def __init__(self,
                  params: dict,
                  policy: Policy,
-                 ref_policy: Policy,
                  quantile_tokens: List[str],
                  optimizer: torch.optim.Optimizer,
                  scheduler: torch.optim.lr_scheduler.LambdaLR,
@@ -63,15 +62,11 @@ class QuarkTrainer:
         self.num_quantiles = params['train']['num_quantiles']
         self.policy = policy
         self.policy.model.train()
-        self.ref_policy = ref_policy
-        self.ref_policy.model.eval()
         self.optimizer = optimizer
         self.scheduler = scheduler
         self.accelerator = accelerator
         self.training_dataloader = training_dataloader
-              
-        self.kl_loss = torch.nn.KLDivLoss(reduction="none")
-
+            
         self.quantile_tokens = quantile_tokens
         self.best_quantile_token = self.quantile_tokens[0]
         self.best_quantile_id = self.policy.tokenizer.convert_tokens_to_ids(self.best_quantile_token)
@@ -148,7 +143,7 @@ class QuarkTrainer:
 
        # --- LOGGING ---
         if self.params['logging']['wandb_log']:
-            for metric in ['lm', 'kl', 'entropy', 'total']:
+            for metric in ['lm', 'entropy', 'total']:
                 self.accelerator.log({f'Loss/{metric}': stats[f'loss/{metric}']}, step=step_num)
             self.accelerator.log({f'Params/lr': self.optimizer.param_groups[0]['lr']}, step=step_num)
  
@@ -166,60 +161,35 @@ class QuarkTrainer:
             generated_attention_mask=generations_attention_mask
         )
 
-        generated_logits = outputs["generated_logits"] # shape (bs, gen_seq_len, V + num_quantiles)
         generated_entropy = outputs["generated_entropy"] # shape (bs, gen_seq_len)
         lm_loss = outputs["lm_loss"] # shape (bs, gen_seq_len)
 
-        generated_logits = generated_logits[:, :, :-self.num_quantiles] # shape (bs, gen_seq_len, V)
-
-        masks = generations_attention_mask.to(self.policy.device)
-
-        with torch.no_grad():
-            prompts_input_ids_raw, prompts_attention_mask_raw = self.remove_quantile_from_prompt_input_ids(
-                input_ids=prompts_input_ids, 
-                attention_mask=prompts_attention_mask
-            )
-            ref_outputs = self.ref_policy.forward_pass(
-                input_ids=prompts_input_ids_raw,
-                attention_mask=prompts_attention_mask_raw,
-                generated_input_ids=generations_input_ids,
-                generated_attention_mask=generations_attention_mask
-            )
-
-            ref_logits = ref_outputs['generated_logits'] # shape (bs, gen_seq_len, V)
-
-        kl = torch.sum(self.kl_loss(F.log_softmax(generated_logits, dim=-1), F.softmax(ref_logits, dim=-1)), dim=-1) # shape (bs, gen_seq_len)
-        loss = reduce_mean(lm_loss + self.params['train']['kl_coef']*kl - self.params['train']['entropy_coef']*generated_entropy, masks) # shape (1)
+        loss = reduce_mean(lm_loss - self.params['train']['entropy_coef']*generated_entropy, generations_attention_mask) # shape (1)
 
         # gather tensors accross threads for wandb logging metrics
         with torch.no_grad():
             self.accelerator.wait_for_everyone()
             
             # lm loss
-            lm_loss = reduce_mean(lm_loss, masks) 
+            lm_loss = reduce_mean(lm_loss, generations_attention_mask) 
             lm_loss = torch.mean(self.accelerator.gather(lm_loss.unsqueeze(dim=0)))
 
-            # kl loss
-            kl = reduce_mean(kl, masks)
-            kl = torch.mean(self.accelerator.gather(kl.unsqueeze(dim=0)))
-
             # entropy loss
-            generated_entropy = reduce_mean(generated_entropy, masks)
+            generated_entropy = reduce_mean(generated_entropy, generations_attention_mask)
             generated_entropy = torch.mean(self.accelerator.gather(generated_entropy.unsqueeze(dim=0)))
 
             # total loss
-            total_loss = lm_loss + self.params['train']['kl_coef']*kl - self.params['train']['entropy_coef']*generated_entropy
+            total_loss = lm_loss - self.params['train']['entropy_coef']*generated_entropy
             self.accelerator.wait_for_everyone()
 
             stats = {
                 'loss/total': total_loss.item(),
-                'loss/kl': kl.item(),
                 'loss/lm': lm_loss.item(),
                 'loss/entropy': generated_entropy.item(),
             } 
 
         if self.accelerator.is_main_process:
-            prompts, generations = self.decode(self.policy.tokenizer, prompts_input_ids_raw, generations_input_ids, skip_special_tokens=True)
+            prompts, generations = self.decode(self.policy.tokenizer, prompts_input_ids, generations_input_ids, skip_special_tokens=True)
             self.print_samples(queries=prompts, responses=generations, step_num=step_num)
 
         return loss, stats
@@ -238,8 +208,13 @@ class QuarkTrainer:
             save_dir = self.params['model_dir']
 
         self.accelerator.wait_for_everyone()
-        model_state = self.accelerator.get_state_dict(self.policy.model) # This will call the unwrap model as well
-        self.accelerator.save(model_state, f"{save_dir}/model_ckp_{step_num}.bin") # Use in place of `torch.save`
+        unwrapped_model = self.accelerator.unwrap_model(self.policy.model)
+        unwrapped_model.save_pretrained(
+            f"{save_dir}/model_ckp_{step_num}",
+            is_main_process=self.accelerator.is_main_process,
+            save_function=self.accelerator.save,
+            state_dict=self.accelerator.get_state_dict(self.policy.model),
+        )
         self.accelerator.print(f"[step {step_num}] | Model checkpoint saved!")
 
         self.accelerator.wait_for_everyone()
@@ -289,18 +264,18 @@ def main():
             ensure_dir(state_dir)
             accelerator.print("Creating a new state.json file.")
             with open(f"{state_dir}/state_iter_{iteration}.json", "w") as f:
-                json.dump({"step_num": 0}, f)
+                json.dump({"overall_steps": 0}, f)
 
     accelerator.wait_for_everyone() # wait for all threads to ensure save_dir exists and state is created
     
     state_file_path = f"{args['logging']['save_dir']}/state/state_iter_{iteration}.json"
     state_dict = load_state(state_file_path)
-    step_num = state_dict["step_num"]
+    step_num = state_dict["overall_steps"]
     accelerator.print(f"state_dict loaded: {state_dict}")
 
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
-    args['sampling_dir'] = os.path.join(args['save_dir'], 'sampling')
+    args['sampling_dir'] = os.path.join(args['save_dir'], f'sampling/iter_{iteration}')
     args['model_dir'] = os.path.join(args['save_dir'], 'model')
     args['model_scratch_dir'] = os.path.join(args['logging']['scratch_dir'], 'model')
     if accelerator.is_main_process:
@@ -345,26 +320,6 @@ def main():
     accelerator.print(f"Reward Quantile Tokens added to the tokenizer: {quantile_tokens}")
     accelerator.print(f"Tokenizer vocabulary tokens extended to {len(tokenizer)}.")
 
-    ################################################################
-    # --------------- Initialize Reference Policy ---------------- #
-    ################################################################
-
-    ref_policy = Policy(
-        model_checkpoint_name=args['model']['ref_policy']['name_or_path'],
-        device=device,
-        tokenizer=tokenizer
-    )
-    accelerator.print(f"{ref_policy.model.__class__.__name__} Pre-trained reference Policy model correctly loaded to {device}.")
-    accelerator.print(f"Pre-trained Policy model has dtype: {ref_policy.model.dtype}")
-    if ref_policy.model.__class__.__name__ == 'GPTNeoXForCausalLM': # Pythia
-        accelerator.print(f"Input embeddings matrix shape: {ref_policy.model.gpt_neox.embed_in.weight.shape}")
-        ref_policy.model.resize_token_embeddings(tokenizer_initial_len)
-        accelerator.print(f"Input embeddings matrix reshaped to: {ref_policy.model.gpt_neox.embed_in.weight.shape}")
-    else: # GPT-J
-        accelerator.print(f"Input embeddings matrix shape: {ref_policy.model.transformer.wte.weight.shape}")
-        ref_policy.model.resize_token_embeddings(tokenizer_initial_len)
-        accelerator.print(f"Input embeddings matrix reshaped to: {ref_policy.model.transformer.wte.weight.shape}")
-    
     ################################################################
     # ------------ Initialize Policy to be finetuned ------------- #
     ################################################################
@@ -428,7 +383,7 @@ def main():
 
     if accelerator.is_main_process:
         # Save new DataPool state to state_dict (state_dict to be saved once training completes)
-        datapool_save_dict = data_pool.serialize_to_dict(save_path=args['save_dir'])
+        datapool_save_dict = data_pool.serialize_to_dict(save_path=args['sampling_dir'])
         accelerator.print("Updated DataPool correctly serialized!")
         state_dict["data_pool"] = datapool_save_dict
 
@@ -462,9 +417,8 @@ def main():
     accelerator.print(f"Finetuning {num_trainable_params/1e9:.2f}/{(num_trainable_params + num_non_trainable_params)/1e9:.2f}B parameters.")
 
     # Initialize new Optimizer and Scheduler
-    effective_batch_size = args['train']['training_batch_size_per_card'] * num_quantiles * args['train']['num_samples_per_quantile'] * num_gpus
-    total_steps = ceil_div(args['train']['total_episodes'], effective_batch_size)
-    sample_interval = total_steps // args['train']['freq_exploration']
+    global_batch_size = args['train']['training_batch_size_per_card'] * num_gpus
+    total_steps = ceil_div(args['train']['total_episodes'], global_batch_size) # total episodes per iteration = 2048*num_quantiles*num_samples_per_quantile*num_epochs = 2048*5*2*2 = 40960
     warmup_steps = total_steps * args['train']['warmup_ratio']
     if not args['ds_optimizer']:
         accelerator.print("Using a PyTorch optimizer!")
@@ -512,7 +466,6 @@ def main():
         num_samples_per_quantile=args['train']['num_samples_per_quantile'],
         eos_token=tokenizer.eos_token
     ).dataset['train']
-    training_dataset = training_dataset.shuffle(seed=iteration)
     training_seq_collator = QuarkTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
     training_dataloader = DataLoader(
         dataset=training_dataset,
@@ -535,18 +488,10 @@ def main():
     accelerator.print(f"After .prepare(): Training dataloader has {len(training_dataloader)} batches.")
     accelerator.print(f"Policy model dtype set to {policy.model.dtype} after accelerator.prepare().")
     param_types_set = set()
-    for name, param in policy.model.named_parameters():
+    for _, param in policy.model.named_parameters():
         param_types_set.add(param.dtype)
     accelerator.print(f"Model after accelerator.prepare() have the following dtypes: {param_types_set}")
     accelerator.print(f"Model after accelerator.prepare() wrapped into {policy.model.__class__.__name__}")
-
-    if iteration > 1:
-        # Restoring Accelerator state (Model, Optimizer, Scheduler, etc.)
-        last_ckp = state_dict["last_ckp"]
-        last_ckp_path = f"{args['model_dir']}/full_ckp_{last_ckp}"
-        accelerator.print(f"\nLoading Accelerator state (Model, Optimizer, Scheduler, etc.) from {last_ckp_path}.")
-        accelerator.load_state(last_ckp_path)
-        accelerator.print("Accelerator state correclty loaded!")
 
     ################################################################
     # ---------------------- Set up trainer ---------------------- #
@@ -555,7 +500,6 @@ def main():
     trainer = QuarkTrainer(
         params=args,
         policy=policy,
-        ref_policy=ref_policy,
         quantile_tokens=quantile_tokens,
         optimizer=optimizer,
         scheduler=scheduler,
@@ -564,22 +508,21 @@ def main():
     )
 
     steps_taken = 0
-    steps_bar = tqdm(total=sample_interval, initial=steps_taken, position=0, disable=not accelerator.is_main_process)
+    steps_bar = tqdm(total=total_steps, initial=steps_taken, position=0, disable=not accelerator.is_main_process)
 
     accelerator.print("\n--------------------- STARTING TRAINING! ---------------------\n")
-    while steps_taken < sample_interval:
+    while steps_taken < total_steps:
         try:
             accelerator.wait_for_everyone()
-            trainer.step(step_num+1)
-
-            if (step_num + 1) % args['logging']['save_interval'] == 0:
-                trainer.save(step_num+1, save_dir=args["model_scratch_dir"])
+            trainer.step(steps_taken)
 
             steps_taken += 1
             step_num += 1
-            state_dict["step_num"] += 1
             if accelerator.is_main_process:
                 steps_bar.update(1)
+
+            if steps_taken % args['logging']['save_interval'] == 0:
+                trainer.save(steps_taken, save_dir=args["model_scratch_dir"])
 
         except Exception as e:
             accelerator.print("\nThere was an Exception while trying to perform trainer.step()!\n")
@@ -592,8 +535,8 @@ def main():
     steps_bar.close()
     accelerator.end_training()
     accelerator.wait_for_everyone()
-    trainer.save(state_dict["step_num"])
-    state_dict["last_ckp"] = state_dict["step_num"]
+    trainer.save(steps_taken)
+    state_dict["overall_steps"] = step_num
     if accelerator.is_main_process:
         save_state(state_dict, state_file_path)
     accelerator.print(f"state_dict saved: {state_dict}")
