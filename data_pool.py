@@ -503,7 +503,7 @@ class QuarkDataPool():
     def get_data_statistics(self, save_path: Union[str, os.PathLike], tokenizer: AutoTokenizer, num_bins=100):
         # compute min and max reward/length to align histogram edges
         min_reward, max_reward = 1000, -1000
-        min_len, max_len = 0, 5000
+        min_len, max_len = 5000, 0
         for prompt in self.datapool.keys():
             rewards = self.datapool[prompt]["rewards"]
             generations = self.datapool[prompt]["generations"]
