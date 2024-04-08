@@ -33,7 +33,7 @@ def compute_and_save_histograms(jsonl_file, output_file_prefix):
         lines = file.readlines()
         for line in lines:
             entry = json.loads(line)
-            reward_values.append(entry['reward'])
+            reward_values.append(entry['rewards'])
             ppl_values.append(entry['perplexity'])
             generations.append(entry[key])
 

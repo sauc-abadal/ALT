@@ -32,7 +32,7 @@ def compute_and_save_corr(jsonl_file, output_file_prefix):
         for line in lines:
             entry = json.loads(line)
             generations.append(entry[key])
-            rewards.append(entry["reward"])
+            rewards.append(entry["rewards"])
 
     encoded_generations = tokenizer(generations)["input_ids"]
     generations_lens = [len(encoded_gen) for encoded_gen in encoded_generations]
