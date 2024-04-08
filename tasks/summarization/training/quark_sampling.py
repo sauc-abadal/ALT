@@ -100,7 +100,7 @@ class QuarkSampler:
                
                 import pdb
                 pdb.set_trace()
-                
+
                 if self.params['is_reference']:
                     prompts_quantile_batch = ["-"]*input_ids.shape[0]
                 else:
@@ -149,7 +149,7 @@ def main():
     device = accelerator.device
 
     # Set saving directories
-    iteration = args['iterations']
+    iteration = args['iteration']
     args['save_dir'] = args['logging']['save_dir']
     args['sampling_dir'] = os.path.join(args['save_dir'], f'sampling/iter_{iteration}')
     if accelerator.is_main_process:
