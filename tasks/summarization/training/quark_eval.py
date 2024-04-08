@@ -61,7 +61,7 @@ class QuarkEvaluator:
                 entry = json.loads(line)
                 prompt = entry['prompt']
                 generation = entry['generation']
-                reward = entry['reward']
+                reward = entry['rewards']
                 prompts.append(prompt)
                 generations.append(generation)
                 rewards.append(reward)
