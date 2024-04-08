@@ -21,11 +21,14 @@ from state import load_state
 # load parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', required=True, help='path to config file')
+parser.add_argument('--iteration', type=int, required=True, help='number of sampling/reward phases carried out')
 args = parser.parse_args()
+iteration = args.iteration
 
 # load yaml file
 with open(args.config) as f:
     args = yaml.safe_load(f)
+    args['iteration'] = iteration
 
 class QuarkEvaluator:
     def __init__(self,
@@ -48,8 +51,8 @@ class QuarkEvaluator:
             self.right_tokenizer.pad_token = self.right_tokenizer.eos_token # as GPT-J's tokenizer doesn't have a padding token -> eos_token = bos_token = unk_token = pad_token = "<|endoftext|>", eos_token_id = bos_token_id = unk_token_id = pad_token_id = 50256
             self.right_tokenizer.pad_token_id = self.right_tokenizer.eos_token_id
 
-    def eval(self, sampling_stage, step_num) -> None:
-        print(f"[Sampling stage {sampling_stage}] | Evaluating on the dev set ...")
+    def eval(self, iteration) -> None:
+        print(f"[Sampling stage {iteration}] | Evaluating on the dev set ...")
 
         prompts, generations, rewards = [], [], []
         with open(self.reward_file, 'r') as input_file:
@@ -99,12 +102,6 @@ class QuarkEvaluator:
         print(f"Perplexity: {avg_ppl:+.2f}")
         print(f"Avg. Reward: {avg_reward:.2f}")
         print(f"dist-1={dist_1:.3f}, dist-2={dist_2:.3f}, dist-3={dist_3:.3f}")
-        if self.params['logging']['wandb_log']:
-            wandb.log({f'Evaluation/perplexity': avg_ppl}, step=step_num)
-            wandb.log({f'Evaluation/reward': avg_reward}, step=step_num)
-            wandb.log({f'Evaluation/Dist-1': dist_1}, step=step_num)
-            wandb.log({f'Evaluation/Dist-2': dist_2}, step=step_num)
-            wandb.log({f'Evaluation/Dist-3': dist_3}, step=step_num)
 
         # Adding the perplexity scores to each dictionary
         for i, line in enumerate(lines):
@@ -115,6 +112,11 @@ class QuarkEvaluator:
         # Write the modified dictionaries with rewards to the sampling JSONL file
         with open(self.reward_file, 'w') as out_file:
             out_file.write('\n'.join(lines))
+
+        with open(f"{self.params['sampling_dir']}/eval_metrics.txt", 'w') as f:
+            f.write(f"Avg. Reward: {avg_reward:.2f}\n")
+            f.write(f"Perplexity: {avg_ppl:+.2f}\n")
+            f.write(f"dist-1={dist_1:.3f}, dist-2={dist_2:.3f}, dist-3={dist_3:.3f}")
 
 def main():
 
@@ -135,30 +137,14 @@ def main():
     num_gpus = torch.cuda.device_count()
     print(f'Detected {num_gpus} GPUS')
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-     
-    # Set wandb logging
-    wandb_log = args['logging']['wandb_log']
-    if wandb_log:
-        wandb.login(key=WANDB_API_KEY)
-        wandb.init(
-            entity=args['logging']['wandb_entity'],
-            project=args['logging']['wandb_project'],
-            name=f"{args['logging']['run_name']}",
-            id=f"{args['logging']['run_id']}"
-        )
-
-    # Load the state from the state_dict
-    state_file_path = args['train']['state_file_path'] 
-    state_dict = load_state(state_file_path)
-    sampling_stage = state_dict["sampling_stage"] - 1
-    step_num = state_dict["step_num"]
+    iteration = args['iteration']
 
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
-    args['sampling_dir'] = os.path.join(args['save_dir'], 'sampling')
+    args['sampling_dir'] = os.path.join(args['save_dir'], f'sampling/iter_{iteration}')
     ensure_dir(args['sampling_dir'])
     
-    reward_file = f"{args['sampling_dir']}/quark_sampling_data_valid_stage_{sampling_stage}.json"
+    reward_file = f"{args['sampling_dir']}/quark_sampling_data_valid_split_iter_{iteration}.json"
     print(f"Writing sampling (eval) data to reward_file: {reward_file}")
 
     print(f'Initializing models ...')
@@ -200,7 +186,7 @@ def main():
     )     
 
     print("\n--------------------- STARTING EVALUATING! ---------------------\n")
-    evaluator.eval(sampling_stage, step_num)
+    evaluator.eval(iteration)
     print("\n--------------------- EVALUATING COMPLETED ---------------------\n")
 
 if __name__ == "__main__":

@@ -97,9 +97,6 @@ class QuarkSampler:
                     input_ids=input_ids, 
                     attention_mask=attention_mask,
                     generation_config=self.generation_config)
-               
-                import pdb
-                pdb.set_trace()
 
                 if self.params['is_reference']:
                     prompts_quantile_batch = ["-"]*input_ids.shape[0]
@@ -115,7 +112,7 @@ class QuarkSampler:
                 prompts_quantile.extend(prompts_quantile_batch)
 
         # save sampling data in a json file 
-        sampling_file = Path(self.params['sampling_dir']) / f"quark_sampling_data_{self.params['split']}_slit_iter_{iteration}_worker_{self.accelerator.local_process_index}.json"
+        sampling_file = Path(self.params['sampling_dir']) / f"quark_sampling_data_{self.params['split']}_split_iter_{iteration}_worker_{self.accelerator.local_process_index}.json"
         with sampling_file.open('w') as f:
             for (prompt_quantile_data, prompt_data, generation_data) in zip(prompts_quantile, prompts, generations):
                 response_dict = {
@@ -127,8 +124,7 @@ class QuarkSampler:
                 f.write('\n')
 
 def main():
-    print(args['is_reference'])
-    print(type(args['is_reference']))
+
     ################################################################
     # -------------------- Set up Environment -------------------- #
     ################################################################
