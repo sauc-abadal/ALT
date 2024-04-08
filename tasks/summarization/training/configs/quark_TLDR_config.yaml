@@ -6,8 +6,8 @@ data:
   valid_split_name: valid
 logging:
   log_interval: 500
-  save_interval: 500
-  run_id: '19997'
+  save_interval: 1000
+  run_id: '19996'
   run_name: quark_TLDR_5q_v6
   save_dir: /cluster/work/sachan/sauc/NLF
   scratch_dir: /cluster/scratch/sabadal/nlf/quark_TLDR_5q_v6
