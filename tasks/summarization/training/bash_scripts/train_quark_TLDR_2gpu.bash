@@ -2,7 +2,7 @@
 
 #SBATCH -n 1
 #SBATCH --cpus-per-task=1
-#SBATCH --gpus= a100_80gb:2
+#SBATCH --gpus=a100_80gb:2
 #SBATCH --mem-per-cpu=160000
 #SBATCH --time=24:00:00
 #SBATCH --output="output/quark_training_TLDR_5q_v6_noKL_2gpu_iter_1.out"

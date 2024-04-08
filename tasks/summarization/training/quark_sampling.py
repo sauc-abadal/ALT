@@ -25,18 +25,23 @@ from state import load_state, save_state
 # load parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', required=True, help='path to config file')
-parser.add_argument('--first_iter', required=True, help='whether or not is the first sampling iteration')
-parser.add_argument('--split', required=True, help='sampling on train/valid split')
+parser.add_argument('--iteration', type=int, required=True, help='number of sampling/reward phases carried out')
+parser.add_argument('--split', type=str, required=True, help='sampling on train/valid split')
+parser.add_argument('--model_path', type=str, required=True, help='ref. or fine-tuned HF model path')
+parser.add_argument('--is_reference', type=bool, required=True, help='true if reference policy')
 args = parser.parse_args()
-first_iter = args.first_iter
-print(f"CLI arg 'first_iter': {first_iter}")
+iteration = args.iteration
 split = args.split
+model_path = args.model_path
+is_reference = args.is_reference
 
 # load yaml file
 with open(args.config) as f:
     args = yaml.safe_load(f)
-    args['first_iter'] = first_iter
+    args['iteration'] = iteration
     args['split'] = split
+    args['model_path'] = model_path
+    args['is_reference'] = is_reference
 
 class QuarkSampler:
     def __init__(self,
@@ -79,18 +84,8 @@ class QuarkSampler:
         generations = tokenizer.batch_decode(generation_input_ids, skip_special_tokens=skip_special_tokens, clean_up_tokenization_spaces=True)
         return (prompts, generations)
 
-    def sample(self, sampling_stage) -> None:        
-        self.accelerator.print(f"[Sampling ({self.params['split']}) stage {sampling_stage}] Sampling ...")
-
-        if self.params['split'] == 'train':
-            if sampling_stage == 1:
-                # in the 1st sampling phase, use collate_fn that collates batches of data without reward quantile tokens
-                collate_fn = lambda batch: self.collate_fn_wrapper(batch, conditioning=False)     
-            else:
-                # in subsequent sampling phases, use collate_fn that collates batches of data with reward quantile tokens
-                collate_fn = lambda batch: self.collate_fn_wrapper(batch, best_quantile=True, conditioning=True)
-            
-            self.sampling_dataloader.collate_fn = collate_fn
+    def sample(self, iteration) -> None:        
+        self.accelerator.print(f"[Sampling ({self.params['split']}) iteration {iteration}] Sampling ...")
 
         prompts, prompts_quantile, generations = [], [], []
         with torch.no_grad():
@@ -103,18 +98,15 @@ class QuarkSampler:
                     attention_mask=attention_mask,
                     generation_config=self.generation_config)
                
-
-                if self.params['split'] == 'train':
-                    if sampling_stage == 1:
-                        prompts_quantile_batch = ["-"]*input_ids.shape[0]
-                    else:
-                        first_att_idxs = torch.argmax(attention_mask, dim=1).unsqueeze(1)
-                        mask = torch.arange(input_ids.shape[1], device=first_att_idxs.device).unsqueeze(0) == first_att_idxs
-                        prompts_quantile_batch = self.policy.tokenizer.batch_decode(input_ids[mask])
+                import pdb
+                pdb.set_trace()
+                
+                if self.params['is_reference']:
+                    prompts_quantile_batch = ["-"]*input_ids.shape[0]
                 else:
                     first_att_idxs = torch.argmax(attention_mask, dim=1).unsqueeze(1)
                     mask = torch.arange(input_ids.shape[1], device=first_att_idxs.device).unsqueeze(0) == first_att_idxs
-                    prompts_quantile_batch = self.policy.tokenizer.batch_decode(input_ids[mask])        
+                    prompts_quantile_batch = self.policy.tokenizer.batch_decode(input_ids[mask])     
                 
                 generations_batch = rollouts["generated_text"]
             
@@ -123,7 +115,7 @@ class QuarkSampler:
                 prompts_quantile.extend(prompts_quantile_batch)
 
         # save sampling data in a json file 
-        sampling_file = Path(self.params['sampling_dir']) / f"quark_sampling_data_{self.params['split']}_stage_{sampling_stage}_worker_{self.accelerator.local_process_index}.json"
+        sampling_file = Path(self.params['sampling_dir']) / f"quark_sampling_data_{self.params['split']}_slit_iter_{iteration}_worker_{self.accelerator.local_process_index}.json"
         with sampling_file.open('w') as f:
             for (prompt_quantile_data, prompt_data, generation_data) in zip(prompts_quantile, prompts, generations):
                 response_dict = {
@@ -143,7 +135,7 @@ def main():
     torch.cuda.empty_cache()
     # Set seed
     set_seed(
-        seed=args['train']['seed'], 
+        seed=args['train']['seed'] + args['iteration'], 
         cuda_deterministic=args['train']['cuda_deterministic'])
     accelerator = Accelerator()
     accelerator.print(f"############### ({args['split']}) quark_sampling.py ###############")
@@ -156,28 +148,12 @@ def main():
     accelerator.print(f'Using {num_gpus} GPUS')
     device = accelerator.device
 
-    # Load the state from the state_dict
-    if accelerator.is_main_process:
-        ensure_dir(args['logging']['save_dir'])
-        if args['first_iter'] == "True":
-            accelerator.print("Creating a new state.json file.")
-            with open(args['train']['state_file_path'], "w") as f:
-                json.dump({}, f)
-
-    accelerator.wait_for_everyone() # wait for all threads to ensure save_dir exists and state is created
-    state_file_path = args['train']['state_file_path'] 
-    state_dict = load_state(state_file_path)
-    if "sampling_stage" not in state_dict:
-        state_dict["sampling_stage"] = 1
-    sampling_stage = state_dict["sampling_stage"]
-    accelerator.print(f"state_dict loaded: {state_dict}")
-
     # Set saving directories
+    iteration = args['iterations']
     args['save_dir'] = args['logging']['save_dir']
-    args['model_dir'] = os.path.join(args['save_dir'], 'model')
-    args['sampling_dir'] = os.path.join(args['save_dir'], f'sampling_stage_{sampling_stage}')
+    args['sampling_dir'] = os.path.join(args['save_dir'], f'sampling/iter_{iteration}')
     if accelerator.is_main_process:
-        ensure_dir(args['model_dir'])
+        ensure_dir(args['save_dir'])
         ensure_dir(args['sampling_dir'])
     accelerator.wait_for_everyone()
     accelerator.print(f"Writing sampling data to output directory: {args['sampling_dir']}")
@@ -206,7 +182,7 @@ def main():
     tokenizer_initial_len = len(tokenizer)
     accelerator.print(f"Tokenizer has {tokenizer_initial_len} vocabulary tokens after loading from pre-trained.")
     
-    if sampling_stage > 1:
+    if not args['is_reference']:
         # add special reward quantile tokens to the tokenizer
         tokenizer.add_tokens(quantile_tokens, special_tokens=True)
         bad_words_ids = [[tokenizer.convert_tokens_to_ids(quantile_token)] for quantile_token in quantile_tokens]
@@ -219,49 +195,16 @@ def main():
     ################################################################
 
     policy = Policy(
-        model_checkpoint_name=args['model']['policy_model']['name_or_path'],
+        model_checkpoint_name=args['model_path'],
         device=device,
         tokenizer=tokenizer
     )
-    accelerator.print(f"{policy.model.__class__.__name__} Pre-trained Policy model correctly loaded to {device}.")
-    accelerator.print(f"Pre-trained Policy model has dtype: {policy.model.dtype}")
+    accelerator.print(f"{policy.model.__class__.__name__} Policy model correctly loaded to {device}.")
+    accelerator.print(f"Policy model has dtype: {policy.model.dtype}")
     if policy.model.__class__.__name__ == 'GPTNeoXForCausalLM': # Pythia
         accelerator.print(f"Input embeddings matrix shape: {policy.model.gpt_neox.embed_in.weight.shape}")
-        policy.model.resize_token_embeddings(tokenizer_initial_len)
-        accelerator.print(f"Input embeddings matrix reshaped to: {policy.model.gpt_neox.embed_in.weight.shape}")
     else: # GPT-J
         accelerator.print(f"Input embeddings matrix shape: {policy.model.transformer.wte.weight.shape}")
-        policy.model.resize_token_embeddings(tokenizer_initial_len)
-        accelerator.print(f"Input embeddings matrix reshaped to: {policy.model.transformer.wte.weight.shape}")
-    
-    if sampling_stage > 1:
-        # resize token_embeddings associated to the newly added tokens
-        weights = policy.model.get_input_embeddings().weight.detach().cpu().numpy()
-        mean_weights, std_weights = np.mean(weights, axis=0), np.std(weights, axis=0)
-        new_inits = np.vstack([np.random.normal(loc=mean_weights, scale=std_weights) for _ in quantile_tokens])
-
-        policy.model.resize_token_embeddings(len(tokenizer))
-        if policy.model.__class__.__name__ == 'GPTNeoXForCausalLM': # Pythia
-            accelerator.print(f"After adding quantile tokens, Input embeddings matrix reshaped to: {policy.model.gpt_neox.embed_in.weight.shape}")
-        else: # GPT-J
-            accelerator.print(f"After adding quantile tokens, Input embeddings matrix reshaped to: {policy.model.transformer.wte.weight.shape}")
-        
-        with torch.no_grad():
-            new_inits = torch.tensor(new_inits)
-            policy.model.get_input_embeddings().weight[-len(quantile_tokens):, :] = new_inits
-
-    ################################################################
-    # ------------- Loading Policy Model Checkpoint -------------- #
-    ################################################################    
-
-    # if sampling_stage > 1:
-        last_ckp = state_dict["last_ckp"]
-        last_ckp_path = f"{args['model_dir']}/model_ckp_{last_ckp}.bin"
-        accelerator.print(f"Loading Policy model state_dict from {last_ckp_path}...")
-
-        policy_state_dict = torch.load(last_ckp_path)
-        policy.model.load_state_dict(policy_state_dict)
-        accelerator.print(f"Policy model state_dict correctly loaded from {last_ckp_path}.")
     
     ################################################################
     # --------------- Setting up Generation config---------------- #
@@ -304,13 +247,18 @@ def main():
     def collate_fn_wrapper(batch, best_quantile=True, conditioning=True):
         return prompt_collator(batch, best_quantile=best_quantile, conditioning=conditioning)
     
+    if args['is_reference']:
+        collate_fn = lambda batch: collate_fn_wrapper(batch, best_quantile=False, conditioning=False)
+    else:
+        collate_fn = lambda batch: collate_fn_wrapper(batch, best_quantile=True, conditioning=True)
+
     if args['split'] == "train":
         sampling_dataloader = DataLoader(
             dataset=sampling_dataset,
             batch_size=args['train']['sampling_batch_size_per_card'],
             shuffle=True,
             drop_last=True,
-            collate_fn=lambda batch: collate_fn_wrapper(batch, best_quantile=False, conditioning=False)
+            collate_fn=collate_fn
         )
         accelerator.print(f"Sampling Train dataset loaded with {len(sampling_dataset)} samples | Sampling Train dataloader with {len(sampling_dataloader)} batches")
     else:
@@ -319,10 +267,9 @@ def main():
             batch_size=args['train']['sampling_batch_size_per_card'],
             shuffle=False,
             drop_last=False,
-            collate_fn=lambda batch: collate_fn_wrapper(batch, best_quantile=True, conditioning=True)
+            collate_fn=collate_fn
         )
         accelerator.print(f"Sampling Dev dataset loaded with {len(sampling_dataset)} samples | Sampling Dev dataloader with {len(sampling_dataloader)} batches")
-        sampling_stage -= 1 # decrease sampling_stage as evaluation takes place is referred to the previous sampling_stage
 
     ################################################################
     # ---------------------- Set up Accelerator ------------------ #
@@ -356,14 +303,8 @@ def main():
     )
 
     accelerator.print("\n--------------------- STARTING SAMPLING! ---------------------\n")
-    sampler.sample(sampling_stage)
+    sampler.sample(iteration)
     accelerator.print("\n--------------------- SAMPLING COMPLETED ---------------------\n")
-
-    if args["split"] == "train":
-        if accelerator.is_main_process:
-            state_dict["sampling_stage"] += 1
-            save_state(state_dict, state_file_path)
-        accelerator.print(f"state_dict saved: {state_dict}")
 
 if __name__ == "__main__":
     main()
