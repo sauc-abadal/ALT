@@ -146,7 +146,7 @@ def main():
     start_ = int(start/num_generations)
     end_ = int(end/num_generations)
     lines = lines[start_:end_]
-    new_sampling_file = f"{save_dir}/{sampling_file.split('.')[0].split('/')[-1]}_thread_{args['split_number']}.json"
+    new_sampling_file = f"{save_dir}/{sampling_file.split('.')[0].split('/')[-1]}_reward_thread_{args['split_number']}.json"
     with open(new_sampling_file, 'w') as output_file:
         output_file.write(''.join(lines))
 
