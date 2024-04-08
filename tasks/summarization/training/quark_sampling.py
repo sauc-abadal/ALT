@@ -28,7 +28,7 @@ parser.add_argument('--config', required=True, help='path to config file')
 parser.add_argument('--iteration', type=int, required=True, help='number of sampling/reward phases carried out')
 parser.add_argument('--split', type=str, required=True, help='sampling on train/valid split')
 parser.add_argument('--model_path', type=str, required=True, help='ref. or fine-tuned HF model path')
-parser.add_argument('--is_reference', type=bool, required=True, help='true if reference policy')
+parser.add_argument('--is_reference', action='store_true', help='True if reference policy')
 args = parser.parse_args()
 iteration = args.iteration
 split = args.split
