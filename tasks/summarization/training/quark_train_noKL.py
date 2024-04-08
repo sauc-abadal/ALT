@@ -31,11 +31,16 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--config', required=True, help='path to config file')
 parser.add_argument('--iteration', type=int, help='number of sampling/reward phases carried out')
 parser.add_argument('--input_sampling_file', required=True, type=str, help='path to input sampling file in JSONL format containing the newly sampled data to be added to the datapool')
+parser.add_argument('--model_path', required=False, type=str, help='path to model ckpt to resume fine-tuning')
 parser.add_argument('--ds_optimizer', action='store_true', help='whether we are using a DeepSpeed optimizer or not, if provided -> set to True')
 parser.add_argument('--ds_scheduler', action='store_true', help='whether we are using a DeepSpeed scheduler or not, if provided -> set to True')
 args = parser.parse_args()
 iteration = args.iteration
 input_sampling_file = args.input_sampling_file
+if args.model_path:
+    model_path = args.model_path
+else:
+    model_path = None
 ds_optimizer = args.ds_optimizer
 ds_scheduler = args.ds_scheduler
 
@@ -44,6 +49,7 @@ with open(args.config) as f:
     args = yaml.safe_load(f)
     args['iteration'] = iteration
     args['input_sampling_file'] = input_sampling_file
+    args['model_path'] = model_path
     args['ds_optimizer'] = ds_optimizer
     args['ds_scheduler'] = ds_scheduler
 
@@ -259,12 +265,18 @@ def main():
     iteration = args["iteration"]
     if accelerator.is_main_process:
         ensure_dir(args['logging']['save_dir'])
+        state_dir = f"{args['logging']['save_dir']}/state"
+        ensure_dir(state_dir)
         if iteration == 1:
-            state_dir = f"{args['logging']['save_dir']}/state"
-            ensure_dir(state_dir)
             accelerator.print("Creating a new state.json file.")
             with open(f"{state_dir}/state_iter_{iteration}.json", "w") as f:
                 json.dump({"overall_steps": 0}, f)
+        else:
+            accelerator.print("Copying previous state.json file.")
+            with open(f"{state_dir}/state_iter_{iteration-1}.json", "r") as f:
+                previous_dict = json.load(f)
+            with open(f"{state_dir}/state_iter_{iteration}.json", "w") as f:
+                json.dump(previous_dict, f)
 
     accelerator.wait_for_everyone() # wait for all threads to ensure save_dir exists and state is created
     
@@ -275,8 +287,8 @@ def main():
 
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
-    args['sampling_dir'] = os.path.join(args['save_dir'], f'sampling/iter_{iteration}')
-    args['model_dir'] = os.path.join(args['save_dir'], 'model')
+    args['sampling_dir'] = os.path.join(args['save_dir'], f'output_iter_{iteration}')
+    args['model_dir'] = os.path.join(args['save_dir'], f'model/iter_{iteration}')
     args['model_scratch_dir'] = os.path.join(args['logging']['scratch_dir'], 'model')
     if accelerator.is_main_process:
         ensure_dir(args['sampling_dir'])
@@ -323,37 +335,51 @@ def main():
     ################################################################
     # ------------ Initialize Policy to be finetuned ------------- #
     ################################################################
-        
-    policy = Policy(
-        model_checkpoint_name=args['model']['policy_model']['name_or_path'],
-        device=device,
-        tokenizer=tokenizer
-    )
-    accelerator.print(f"{policy.model.__class__.__name__} Pre-trained Policy model correctly loaded to {device}.")
-    accelerator.print(f"Pre-trained Policy model has dtype: {policy.model.dtype}")
-    if policy.model.__class__.__name__ == 'GPTNeoXForCausalLM': # Pythia
-        accelerator.print(f"Input embeddings matrix shape: {policy.model.gpt_neox.embed_in.weight.shape}")
-        policy.model.resize_token_embeddings(tokenizer_initial_len)
-        accelerator.print(f"Input embeddings matrix reshaped to: {policy.model.gpt_neox.embed_in.weight.shape}")
-    else: # GPT-J
-        accelerator.print(f"Input embeddings matrix shape: {policy.model.transformer.wte.weight.shape}")
-        policy.model.resize_token_embeddings(tokenizer_initial_len)
-        accelerator.print(f"Input embeddings matrix reshaped to: {policy.model.transformer.wte.weight.shape}")
-    
-    # resize token_embeddings associated to the newly added tokens
-    weights = policy.model.get_input_embeddings().weight.detach().cpu().numpy()
-    mean_weights, std_weights = np.mean(weights, axis=0), np.std(weights, axis=0)
-    new_inits = np.vstack([np.random.normal(loc=mean_weights, scale=std_weights) for _ in quantile_tokens])
 
-    policy.model.resize_token_embeddings(len(tokenizer))
-    if policy.model.__class__.__name__ == 'GPTNeoXForCausalLM': # Pythia
-        accelerator.print(f"After adding quantile tokens, Input embeddings matrix reshaped to: {policy.model.gpt_neox.embed_in.weight.shape}")
-    else: # GPT-J
-        accelerator.print(f"After adding quantile tokens, Input embeddings matrix reshaped to: {policy.model.transformer.wte.weight.shape}")
+    if iteration == 1:
+        policy = Policy(
+            model_checkpoint_name=args['model']['policy_model']['name_or_path'],
+            device=device,
+            tokenizer=tokenizer
+        )
+        accelerator.print(f"{policy.model.__class__.__name__} Pre-trained Policy model correctly loaded to {device}.")
+        accelerator.print(f"Pre-trained Policy model has dtype: {policy.model.dtype}")
+        if policy.model.__class__.__name__ == 'GPTNeoXForCausalLM': # Pythia
+            accelerator.print(f"Input embeddings matrix shape: {policy.model.gpt_neox.embed_in.weight.shape}")
+            policy.model.resize_token_embeddings(tokenizer_initial_len)
+            accelerator.print(f"Input embeddings matrix reshaped to: {policy.model.gpt_neox.embed_in.weight.shape}")
+        else: # GPT-J
+            accelerator.print(f"Input embeddings matrix shape: {policy.model.transformer.wte.weight.shape}")
+            policy.model.resize_token_embeddings(tokenizer_initial_len)
+            accelerator.print(f"Input embeddings matrix reshaped to: {policy.model.transformer.wte.weight.shape}")
+        
+        # resize token_embeddings associated to the newly added tokens
+        weights = policy.model.get_input_embeddings().weight.detach().cpu().numpy()
+        mean_weights, std_weights = np.mean(weights, axis=0), np.std(weights, axis=0)
+        new_inits = np.vstack([np.random.normal(loc=mean_weights, scale=std_weights) for _ in quantile_tokens])
+
+        policy.model.resize_token_embeddings(len(tokenizer))
+        if policy.model.__class__.__name__ == 'GPTNeoXForCausalLM': # Pythia
+            accelerator.print(f"After adding quantile tokens, Input embeddings matrix reshaped to: {policy.model.gpt_neox.embed_in.weight.shape}")
+        else: # GPT-J
+            accelerator.print(f"After adding quantile tokens, Input embeddings matrix reshaped to: {policy.model.transformer.wte.weight.shape}")
+        
+        with torch.no_grad():
+            new_inits = torch.tensor(new_inits)
+            policy.model.get_input_embeddings().weight[-len(quantile_tokens):, :] = new_inits
     
-    with torch.no_grad():
-        new_inits = torch.tensor(new_inits)
-        policy.model.get_input_embeddings().weight[-len(quantile_tokens):, :] = new_inits
+    else:
+        policy = Policy(
+            model_checkpoint_name=args['model_path'],
+            device=device,
+            tokenizer=tokenizer
+        )
+        accelerator.print(f"{policy.model.__class__.__name__} Policy model correctly loaded to {device}.")
+        accelerator.print(f"Policy model has dtype: {policy.model.dtype}")
+        if policy.model.__class__.__name__ == 'GPTNeoXForCausalLM': # Pythia
+            accelerator.print(f"Input embeddings matrix shape: {policy.model.gpt_neox.embed_in.weight.shape}")
+        else: # GPT-J
+            accelerator.print(f"Input embeddings matrix shape: {policy.model.transformer.wte.weight.shape}")
 
     ################################################################
     # ------------------ Initialize DataPool --------------------- #
@@ -514,7 +540,7 @@ def main():
     while steps_taken < total_steps:
         try:
             accelerator.wait_for_everyone()
-            trainer.step(steps_taken)
+            trainer.step(step_num)
 
             steps_taken += 1
             step_num += 1
@@ -522,7 +548,7 @@ def main():
                 steps_bar.update(1)
 
             if steps_taken % args['logging']['save_interval'] == 0:
-                trainer.save(steps_taken, save_dir=args["model_scratch_dir"])
+                trainer.save(step_num, save_dir=args["model_scratch_dir"])
 
         except Exception as e:
             accelerator.print("\nThere was an Exception while trying to perform trainer.step()!\n")
@@ -535,7 +561,7 @@ def main():
     steps_bar.close()
     accelerator.end_training()
     accelerator.wait_for_everyone()
-    trainer.save(steps_taken)
+    trainer.save(step_num)
     state_dict["overall_steps"] = step_num
     if accelerator.is_main_process:
         save_state(state_dict, state_file_path)
