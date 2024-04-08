@@ -3,6 +3,7 @@
 #SBATCH -n 1
 #SBATCH --cpus-per-task=1
 #SBATCH --gpus=a100_80gb:1
+#SBATCH --exclude eu-ts-02
 #SBATCH --gres=gpumem:80g
 #SBATCH --mem-per-cpu=96000
 #SBATCH --time=2:00:00
