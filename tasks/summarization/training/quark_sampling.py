@@ -148,7 +148,7 @@ def main():
     # Set saving directories
     iteration = args['iteration']
     args['save_dir'] = args['logging']['save_dir']
-    args['sampling_dir'] = os.path.join(args['save_dir'], f'sampling/iter_{iteration}')
+    args['sampling_dir'] = os.path.join(args['save_dir'], f'output_iter_{iteration}')
     if accelerator.is_main_process:
         ensure_dir(args['save_dir'])
         ensure_dir(args['sampling_dir'])

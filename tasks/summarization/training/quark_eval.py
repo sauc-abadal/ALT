@@ -141,7 +141,7 @@ def main():
 
     # Set saving directories
     args['save_dir'] = args['logging']['save_dir']
-    args['sampling_dir'] = os.path.join(args['save_dir'], f'sampling/iter_{iteration}')
+    args['sampling_dir'] = os.path.join(args['save_dir'], f'output_iter_{iteration}')
     ensure_dir(args['sampling_dir'])
     
     reward_file = f"{args['sampling_dir']}/quark_sampling_data_valid_split_iter_{iteration}.json"
