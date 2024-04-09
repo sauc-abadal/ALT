@@ -1,3 +1,5 @@
+#!/bin/bash
+
 conda activate sample
 
 og_input_file=/cluster/work/sachan/NLF/Q0_conditioned_prompts_train.json
@@ -17,14 +19,14 @@ top_p=0.9
 max_new_tokens=64
 
 # Submit SLURM jobs and capture job IDs
-sample1=$(sbatch start_run.sh $input_file $output_dir 0 8 $model_path $tokenizer_path $data_split $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
-sample2=$(sbatch start_run.sh $input_file $output_dir 1 8 $model_path $tokenizer_path $data_split $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
-sample3=$(sbatch start_run.sh $input_file $output_dir 2 8 $model_path $tokenizer_path $data_split $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
-sample4=$(sbatch start_run.sh $input_file $output_dir 3 8 $model_path $tokenizer_path $data_split $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
-sample5=$(sbatch start_run.sh $input_file $output_dir 4 8 $model_path $tokenizer_path $data_split $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
-sample6=$(sbatch start_run.sh $input_file $output_dir 5 8 $model_path $tokenizer_path $data_split $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
-sample7=$(sbatch start_run.sh $input_file $output_dir 6 8 $model_path $tokenizer_path $data_split $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
-sample8=$(sbatch start_run.sh $input_file $output_dir 7 8 $model_path $tokenizer_path $data_split $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample1=$(sbatch tasks/summarization/training/bash_scritps/start_run.sh $input_file $output_dir 0 8 $model_path $tokenizer_path $data_split $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample2=$(sbatch tasks/summarization/training/bash_scritps/start_run.sh $input_file $output_dir 1 8 $model_path $tokenizer_path $data_split $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample3=$(sbatch tasks/summarization/training/bash_scritps/start_run.sh $input_file $output_dir 2 8 $model_path $tokenizer_path $data_split $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample4=$(sbatch tasks/summarization/training/bash_scritps/start_run.sh $input_file $output_dir 3 8 $model_path $tokenizer_path $data_split $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample5=$(sbatch tasks/summarization/training/bash_scritps/start_run.sh $input_file $output_dir 4 8 $model_path $tokenizer_path $data_split $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample6=$(sbatch tasks/summarization/training/bash_scritps/start_run.sh $input_file $output_dir 5 8 $model_path $tokenizer_path $data_split $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample7=$(sbatch tasks/summarization/training/bash_scritps/start_run.sh $input_file $output_dir 6 8 $model_path $tokenizer_path $data_split $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample8=$(sbatch tasks/summarization/training/bash_scritps/start_run.sh $input_file $output_dir 7 8 $model_path $tokenizer_path $data_split $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
 
 # individual jsonl files named saved in f"{args.output_dir}/{args.data_split}_output_{args.split_number}.json"
 

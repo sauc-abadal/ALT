@@ -1,3 +1,5 @@
+#!/bin/bash
+
 conda activate sample
 
 input_file=/cluster/work/sachan/NLF/Q0_conditioned_prompts_valid.json

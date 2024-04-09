@@ -1,3 +1,5 @@
+#!/bin/bash
+
 conda activate nlf_gptj
 
 config=tasks/summarization/training/configs/quark_TLDR_config.yaml
