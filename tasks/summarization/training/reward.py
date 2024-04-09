@@ -21,11 +21,13 @@ parser.add_argument('--input_sampling_file', required=True, type=str, help='path
 parser.add_argument('--output_dir', required=True, type=str, help='otuput dir where to save sampling file with the computed rewards in JSONL format by adding the key "reward": List[float] to every line')
 parser.add_argument('--split_number', required=True, type=int, help='thread number / split number of the data file, in range 0..total_splits-1')
 parser.add_argument('--total_splits', required=True, type=int, help='total number of threads / splits of the data file')
+parser.add_argument('--num_generations', required=True, type=int, help='number of generations per prompt')
 args = parser.parse_args()
 input_sampling_file = args.input_sampling_file
 output_dir = args.output_dir
 split_number = args.split_number
 total_splits = args.total_splits
+num_generations = args.num_generations
 
 # load yaml file
 with open(args.config) as f:
@@ -34,19 +36,22 @@ with open(args.config) as f:
     args['output_dir'] = output_dir
     args['split_number'] = split_number
     args['total_splits'] = total_splits
+    args['num_generations'] = num_generations
 
-class QuarkRewarder:
+class Rewarder:
     def __init__(self,
                  params: dict,
                  reward_model: GPTRewardModel,
                  reward_dataloader: DataLoader,
                  sampling_file: str,
+                 num_generations: int
                  ) -> None:
         
         self.params = params
         self.reward_model = reward_model
         self.reward_dataloader = reward_dataloader
         self.sampling_file = sampling_file
+        self.num_generations = num_generations
 
     def get_rewards(self) -> None:
         rewards = []
@@ -64,12 +69,15 @@ class QuarkRewarder:
         # Adding the scores to each dictionary
         for i, line in enumerate(lines):
             data = json.loads(line)
-            data['rewards'] = rewards[i]
+            start_idx = i * self.num_generations
+            end_idx = i * self.num_generations + self.num_generations
+            data['rewards'] = rewards[start_idx:end_idx]
             lines[i] = json.dumps(data)
 
         # Write the modified dictionaries with rewards to the sampling JSONL file
         with open(self.sampling_file, 'w') as out_file:
             out_file.write('\n'.join(lines))
+            out_file.write('\n')
 
 def main():
 
@@ -83,7 +91,7 @@ def main():
         seed=args['train']['seed'], 
         cuda_deterministic=args['train']['cuda_deterministic']
     )
-    print(f"############### quark_reward.py ###############")
+    print(f"############### reward.py ###############")
     
     # Set GPU device
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -117,15 +125,18 @@ def main():
     # -------------- Rewarding Dataset / Dataloader -------------- #
     ################################################################
 
+    num_generations = args['num_generations']
+    
     all_samples = []
     with open(sampling_file, 'r') as f:
         lines = f.readlines()
         for line in lines:
             entry = json.loads(line)
             prompt = entry["prompt"]
-            generation = entry["generation"]
-            sample = prompt + generation
-            all_samples.append(sample)
+            generations = entry["generations"]
+            assert len(generations) == num_generations
+            samples = [prompt + generation for generation in generations]
+            all_samples.extend(samples)
     
     print(f"Read a total of {len(all_samples)} samples from sampling_file.")
     # Split the data into chunks.
@@ -136,8 +147,10 @@ def main():
     print(f"Thread {args['split_number']} processing {len(all_samples)} samples.")
     
     # Save chunk of sampling data into json for writing the reward scores afterward
-    lines = lines[start:end]
-    new_sampling_file = f"{save_dir}/{sampling_file.split('.')[0].split('/')[-1]}_worker_{args['split_number']}.json"
+    start_ = int(start/num_generations)
+    end_ = int(end/num_generations)
+    lines = lines[start_:end_]
+    new_sampling_file = f"{save_dir}/{sampling_file.split('.')[0].split('/')[-1]}_reward_thread_{args['split_number']}.json"
     with open(new_sampling_file, 'w') as output_file:
         output_file.write(''.join(lines))
 
@@ -154,11 +167,12 @@ def main():
     # ---------------------- Set up Rewarder --------------------- #
     ################################################################
         
-    rewarder = QuarkRewarder(
+    rewarder = Rewarder(
         params=args,
         reward_model=reward_model,
         reward_dataloader=rm_dataloader,
         sampling_file=new_sampling_file,
+        num_generations=num_generations
     )
 
     print("\n--------------------- STARTING REWARDING! ---------------------\n")
