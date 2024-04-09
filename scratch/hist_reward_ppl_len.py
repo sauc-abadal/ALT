@@ -26,16 +26,16 @@ def compute_and_save_histograms(jsonl_file, output_file_prefix):
     if args.references == "True":
         key = 'summary'
     else:
-        key = 'generation'
+        key = 'generations'
 
     # Read the JSONL file
     with open(jsonl_file, 'r') as file:
         lines = file.readlines()
         for line in lines:
             entry = json.loads(line)
-            reward_values.append(entry['rewards'])
+            reward_values.extend(entry['rewards'])
             ppl_values.append(entry['perplexity'])
-            generations.append(entry[key])
+            generations.extend(entry[key])
 
     encoded_generations = tokenizer(generations)["input_ids"]
     generations_lens = [len(encoded_gen) for encoded_gen in encoded_generations]
