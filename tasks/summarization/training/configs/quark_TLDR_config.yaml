@@ -9,7 +9,7 @@ logging:
   save_interval: 1000
   run_id: '19996'
   run_name: quark_TLDR_5q_v6
-  save_dir: /cluster/work/sachan/sauc/NLF
+  save_dir: /cluster/work/sachan/NLF
   scratch_dir: /cluster/scratch/sabadal/nlf/quark_TLDR_5q_v6
   wandb_entity: sauc-ms-thesis
   wandb_log: true
