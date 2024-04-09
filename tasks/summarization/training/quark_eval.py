@@ -60,10 +60,10 @@ class QuarkEvaluator:
             for line in lines:
                 entry = json.loads(line)
                 prompt = entry['prompt']
-                generation = entry['generation']
+                generations_ = entry['generations']
                 reward = entry['rewards']
                 prompts.append(prompt)
-                generations.append(generation)
+                generations.extend(generations_)
                 rewards.append(reward)
 
         batch_size = self.params['train']['training_batch_size_per_card']
