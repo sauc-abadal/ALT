@@ -64,7 +64,7 @@ class QuarkEvaluator:
                 reward = entry['rewards']
                 prompts.append(prompt)
                 generations.extend(generations_)
-                rewards.append(reward)
+                rewards.extend(reward)
 
         batch_size = self.params['train']['training_batch_size_per_card']
 
