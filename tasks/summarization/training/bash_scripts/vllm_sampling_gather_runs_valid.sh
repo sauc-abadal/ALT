@@ -1,11 +1,11 @@
 #!/bin/bash
 
-conda activate sample
+source /cluster/project/sachan/sauc/anaconda3/bin/activate sample
 
 input_file=/cluster/work/sachan/NLF/Q0_conditioned_prompts_valid.json
 
-output_dir=/cluster/work/sachan/NLF/output_iter_2
-model_path=/cluster/work/sachan/NLF/model/iter_2/model_ckp_5120
+output_dir=/cluster/work/sachan/NLF/output_iter_3
+model_path=/cluster/work/sachan/NLF/model/iter_3/model_ckp_7680
 tokenizer_path=/cluster/work/sachan/NLF/quark_TLDR_5q_tokenizer
 
 data_split=valid

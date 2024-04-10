@@ -1,0 +1,22 @@
+#!/bin/bash
+
+#SBATCH -n 1
+#SBATCH --cpus-per-task=1
+#SBATCH --gpus=a100_80gb:1
+#SBATCH --exclude eu-ts-02
+#SBATCH --gres=gpumem:80g
+#SBATCH --mem-per-cpu=96000
+#SBATCH --time=2:00:00
+#SBATCH --output="/cluster/work/sachan/NLF/slurm_output/ppl_quark_${SLURM_JOB_ID}.out"
+#SBATCH --open-mode=append
+
+source /cluster/project/sachan/sauc/anaconda3/bin/activate nlf_gptj
+
+input_sampling_file=/cluster/work/sachan/NLF/output_iter_3/quark_sampling_data_valid_split_iter_3.json
+output_dir=/cluster/work/sachan/NLF/output_iter_3/
+iteration=3
+
+# concatenate previously sampled jsonl files (8 threads) into a single jsonl file
+bash tasks/summarization/training/bash_scripts/concatenate_jsonl.sh $input_sampling_file $output_dir/quark_sampling_data_valid_split_iter_3_reward_thread_0.json $output_dir/quark_sampling_data_valid_split_iter_3_reward_thread_1.json $output_dir/quark_sampling_data_valid_split_iter_3_reward_thread_2.json $output_dir/quark_sampling_data_valid_split_iter_3_reward_thread_3.json $output_dir/quark_sampling_data_valid_split_iter_3_reward_thread_4.json $output_dir/quark_sampling_data_valid_split_iter_3_reward_thread_5.json $output_dir/quark_sampling_data_valid_split_iter_3_reward_thread_6.json $output_dir/quark_sampling_data_valid_split_iter_3_reward_thread_7.json
+
+python tasks/summarization/training/quark_eval.py --config tasks/summarization/training/configs/quark_TLDR_config.yaml --iteration $iteration

@@ -5,10 +5,10 @@
 #SBATCH --gpus=a100_80gb:2
 #SBATCH --mem-per-cpu=160000
 #SBATCH --time=12:00:00
-#SBATCH --output="output/quark_training_TLDR_5q_v6_noKL_2gpu_iter_3.out"
+#SBATCH --output="/cluster/work/sachan/NLF/slurm_output/quark_training_TLDR_5q_v6_noKL_2gpu_iter_3_${SLURM_JOB_ID}.out"
 #SBATCH --open-mode=append
 
-conda activate nlf_gptj
+source /cluster/project/sachan/sauc/anaconda3/bin/activate nlf_gptj
 
 accelerate_config=/cluster/project/sachan/sauc/nlf/tasks/summarization/training/configs/accelerate_config_ds_2gpu_ds_opt_ds_sch_cpu_off.yaml
 yaml_config=tasks/summarization/training/configs/quark_TLDR_config.yaml

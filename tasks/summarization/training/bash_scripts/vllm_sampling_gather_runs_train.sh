@@ -1,6 +1,6 @@
 #!/bin/bash
 
-conda activate sample
+source /cluster/project/sachan/sauc/anaconda3/bin/activate sample
 
 og_input_file=/cluster/work/sachan/NLF/Q0_conditioned_prompts_train.json
 input_file=/cluster/work/sachan/NLF/sampled_prompts_iter_3.json
