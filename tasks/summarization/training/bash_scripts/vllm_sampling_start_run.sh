@@ -1,4 +1,5 @@
 #!/bin/bash
+
 #SBATCH --gpus=rtx_3090:1
 #SBATCH --time=4:00:00
 #SBATCH --mem-per-cpu=160G

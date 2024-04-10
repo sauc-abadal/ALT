@@ -1,4 +1,5 @@
 #!/bin/bash
+
 #SBATCH -n 1
 #SBATCH --cpus-per-task=1
 #SBATCH --gpus=rtx_3090:1
