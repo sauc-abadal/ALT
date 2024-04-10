@@ -1,3 +1,6 @@
+import sys
+sys.path.append("/cluster/project/sachan/sauc/nlf")
+
 from vllm import LLM, SamplingParams
 import argparse
 from collections import defaultdict
