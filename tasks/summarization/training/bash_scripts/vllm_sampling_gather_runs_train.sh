@@ -18,6 +18,19 @@ temperature=0.9
 top_p=0.9
 max_new_tokens=64
 
+echo "input_file: $input_file"
+echo "output_dir: $output_dir"
+echo "model_path: $model_path"
+echo "tokenizer_path: $tokenizer_path"
+echo "data_split: $data_split"
+echo "num_generations: $num_generations"
+echo "temperature: $temperature"
+echo "top_p: $top_p"
+echo "max_new_tokens: $max_new_tokens"
+
+echo "Command: vllm_sampling.py --input_file $input_file --output_dir $output_dir --split_number 0 --total_splits 8 --model_path $model_path --tokenizer_path $tokenizer_path --data_split $data_split --num_generations $num_generations --temperature $temperature --top_p $top_p --max_new_tokens $max_new_tokens"
+
+
 # Submit SLURM jobs and capture job IDs
 sample1=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 0 8 "$model_path" "$tokenizer_path" "$data_split" "$num_generations" "$temperature" "$top_p" "$max_new_tokens" | awk '{print $4}')
 sample2=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 1 8 "$model_path" "$tokenizer_path" "$data_split" "$num_generations" "$temperature" "$top_p" "$max_new_tokens" | awk '{print $4}')
