@@ -13,9 +13,9 @@
 source /cluster/project/sachan/sauc/anaconda3/bin/activate nlf_gptj
 
 iteration=3
-input_sampling_file="/cluster/work/sachan/NLF/output_iter_3/quark_sampling_data_valid_split_iter_3.json"
-output_dir="/cluster/work/sachan/NLF/output_iter_3/"
-file_prefix="quark_sampling_data_valid_split_iter_3"
+input_sampling_file=/cluster/work/sachan/NLF/output_iter_3/quark_sampling_data_valid_split_iter_3.json
+output_dir=/cluster/work/sachan/NLF/output_iter_3/
+file_prefix=quark_sampling_data_valid_split_iter_3
 
 # concatenate previously sampled jsonl files (8 threads) into a single jsonl file
 bash tasks/summarization/training/bash_scripts/concatenate_jsonl.sh \

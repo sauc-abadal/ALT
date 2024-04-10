@@ -2,16 +2,16 @@
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate sample
 
-og_input_file="/cluster/work/sachan/NLF/Q0_conditioned_prompts_train.json"
-input_file="/cluster/work/sachan/NLF/sampled_prompts_iter_3.json"
+og_input_file=/cluster/work/sachan/NLF/Q0_conditioned_prompts_train.json
+input_file=/cluster/work/sachan/NLF/sampled_prompts_iter_3.json
 
 shuf -n 2048 $og_input_file > $input_file
 
-output_dir="/cluster/work/sachan/NLF/output_iter_3"
-model_path="/cluster/work/sachan/NLF/model/iter_2/model_ckp_5120"
-tokenizer_path="/cluster/work/sachan/NLF/quark_TLDR_5q_tokenizer"
+output_dir=/cluster/work/sachan/NLF/output_iter_3
+model_path=/cluster/work/sachan/NLF/model/iter_2/model_ckp_5120
+tokenizer_path=/cluster/work/sachan/NLF/quark_TLDR_5q_tokenizer
 
-data_split="train"
+data_split=train
 
 num_generations=96
 temperature=0.9
@@ -19,14 +19,14 @@ top_p=0.9
 max_new_tokens=64
 
 # Submit SLURM jobs and capture job IDs
-sample1=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 0 8 "$model_path" "$tokenizer_path" "$data_split" "$num_generations" "$temperature" "$top_p" "$max_new_tokens" | awk '{print $4}')
-sample2=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 1 8 "$model_path" "$tokenizer_path" "$data_split" "$num_generations" "$temperature" "$top_p" "$max_new_tokens" | awk '{print $4}')
-sample3=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 2 8 "$model_path" "$tokenizer_path" "$data_split" "$num_generations" "$temperature" "$top_p" "$max_new_tokens" | awk '{print $4}')
-sample4=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 3 8 "$model_path" "$tokenizer_path" "$data_split" "$num_generations" "$temperature" "$top_p" "$max_new_tokens" | awk '{print $4}')
-sample5=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 4 8 "$model_path" "$tokenizer_path" "$data_split" "$num_generations" "$temperature" "$top_p" "$max_new_tokens" | awk '{print $4}')
-sample6=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 5 8 "$model_path" "$tokenizer_path" "$data_split" "$num_generations" "$temperature" "$top_p" "$max_new_tokens" | awk '{print $4}')
-sample7=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 6 8 "$model_path" "$tokenizer_path" "$data_split" "$num_generations" "$temperature" "$top_p" "$max_new_tokens" | awk '{print $4}')
-sample8=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 7 8 "$model_path" "$tokenizer_path" "$data_split" "$num_generations" "$temperature" "$top_p" "$max_new_tokens" | awk '{print $4}')
+sample1=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 0 8 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample2=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 1 8 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample3=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 2 8 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample4=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 3 8 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample5=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 4 8 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample6=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 5 8 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample7=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 6 8 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample8=$(sbatch tasks/summarization/training/bash_scripts/vllm_sampling_start_run.sh "$input_file" "$output_dir" 7 8 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
 
 # individual jsonl files named saved in f"{args.output_dir}/{args.data_split}_output_{args.split_number}.json"
 
