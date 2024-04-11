@@ -11,7 +11,7 @@ num_generations=96
 # concatenate previously sampled jsonl files (8 threads) into a single jsonl file
 bash tasks/summarization/training/bash_scripts/concatenate_jsonl.sh \
     "$input_sampling_file" \
-    "${output_dir}/train_output_{0..7}.json"
+    "${output_dir}/train_output_"{0..7}.json
 
 # Submit SLURM jobs and capture job IDs
 reward1=$(sbatch tasks/summarization/training/bash_scripts/start_run_reward.sh "$config" "$input_sampling_file" "$output_dir" 0 8 $num_generations | awk '{print $4}')

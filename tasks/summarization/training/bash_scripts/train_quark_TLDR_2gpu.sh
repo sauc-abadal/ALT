@@ -28,7 +28,7 @@ echo "Concatenating files: ${output_dir}/${file_prefix}_reward_thread_{0..7}.jso
 # concatenate previously sampled jsonl files (8 threads) into a single jsonl file
 bash tasks/summarization/training/bash_scripts/concatenate_jsonl.sh \
     "$input_sampling_file" \
-    "${output_dir}/${file_prefix}_reward_thread_{0..7}.json"
+    "${output_dir}/${file_prefix}_reward_thread_"{0..7}.json
 
 # launch training
 accelerate launch --config_file $accelerate_config tasks/summarization/training/quark_train_noKL.py \
