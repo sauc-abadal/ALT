@@ -10,5 +10,11 @@
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate nlf_gptj
 
-python tasks/summarization/training/reward.py --config $1 --input_sampling_file $2 --output_dir $3 --split_number $4 --total_splits $5 --num_generations $6
+python tasks/summarization/training/reward.py \
+    --config "$1" \
+    --input_sampling_file "$2" \
+    --output_dir "$3" \
+    --split_number "$4" \
+    --total_splits "$5" \
+    --num_generations "$6"
 
