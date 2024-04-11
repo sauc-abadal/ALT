@@ -32,7 +32,7 @@ with open(args.input_file, 'r') as f:
 data = [d['prompt'] for d in data]
 
 # Split the data into chunks.
-chunk_size = len(data) // args.total_splits
+chunk_size = len(data) // args.total_splits + 1
 start = (args.split_number) * chunk_size
 end = min((args.split_number + 1) * chunk_size, len(data))
 data = data[start:end]

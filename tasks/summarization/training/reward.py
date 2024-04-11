@@ -140,7 +140,7 @@ def main():
     
     print(f"Read a total of {len(all_samples)} samples from sampling_file.")
     # Split the data into chunks.
-    chunk_size = len(all_samples) // args["total_splits"] 
+    chunk_size = len(all_samples) // args["total_splits"] + 1
     start = (args["split_number"]) * chunk_size
     end = min((args["split_number"] + 1) * chunk_size, len(all_samples))
     all_samples = all_samples[start:end]
