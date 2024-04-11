@@ -20,9 +20,24 @@ input_sampling_file=/cluster/work/sachan/NLF/output_iter_3/quark_sampling_data_t
 output_dir=/cluster/work/sachan/NLF/output_iter_3/
 file_prefix=quark_sampling_data_train_split_iter_3
 
+echo "--iteration: $iteration"
+echo "--input_sampling_file: $input_sampling_file"
+echo "--output_dir: $output_dir"
+echo "Concatenating files: ${output_dir}/${file_prefix}_reward_thread_{0..7}.json"
+
 # concatenate previously sampled jsonl files (8 threads) into a single jsonl file
 bash tasks/summarization/training/bash_scripts/concatenate_jsonl.sh \
     "$input_sampling_file" \
     "${output_dir}/${file_prefix}_reward_thread_{0..7}.json"
 
-accelerate launch --config_file $accelerate_config tasks/summarization/training/quark_train_noKL.py --config $yaml_config --iteration $iteration --input_sampling_file $input_sampling_file --model_path $model_path --ds_optimizer --ds_scheduler
+# launch training
+accelerate launch --config_file $accelerate_config tasks/summarization/training/quark_train_noKL.py \
+    --config $yaml_config \
+    --iteration $iteration \
+    --input_sampling_file $input_sampling_file \
+    --model_path $model_path \
+    --ds_optimizer \
+    --ds_scheduler
+
+# launch evaluation 
+bash tasks/summarization/training/bash_scripts/vllm_sampling_gather_runs_valid.sh

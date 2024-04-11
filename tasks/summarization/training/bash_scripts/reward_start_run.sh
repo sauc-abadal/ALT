@@ -10,6 +10,13 @@
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate nlf_gptj
 
+echo "--config: $1"
+echo "--input_sampling_file: $2"
+echo "--output_dir: $3"
+echo "--split_number: $4"
+echo "--total_splits: $5"
+echo "--num_generations: $6"
+
 python tasks/summarization/training/reward.py \
     --config "$1" \
     --input_sampling_file "$2" \
