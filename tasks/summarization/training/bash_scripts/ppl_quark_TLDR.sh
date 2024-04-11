@@ -20,7 +20,6 @@ file_prefix=quark_sampling_data_valid_split_iter_3
 echo "--iteration: $iteration"
 echo "--input_sampling_file: $input_sampling_file"
 echo "--output_dir: $output_dir"
-echo "Concatenating files: ${output_dir}/${file_prefix}_reward_thread_{0..7}.json"
 
 # concatenate previously sampled jsonl files (8 threads) into a single jsonl file
 bash tasks/summarization/training/bash_scripts/concatenate_jsonl.sh \
