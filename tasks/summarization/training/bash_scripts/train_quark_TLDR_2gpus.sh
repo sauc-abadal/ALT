@@ -13,12 +13,12 @@ source /cluster/project/sachan/sauc/anaconda3/bin/activate nlf_gptj
 accelerate_config=/cluster/project/sachan/sauc/nlf/tasks/summarization/training/configs/accelerate_config_ds_2gpu_ds_opt_ds_sch_cpu_off.yaml
 yaml_config=tasks/summarization/training/configs/quark_TLDR_config.yaml
 
-model_path=/cluster/work/sachan/NLF/model/iter_2/model_ckp_5120
+model_path=/cluster/work/sachan/NLF/model/iter_3/model_ckp_7680
 
-iteration=3
-input_sampling_file=/cluster/work/sachan/NLF/output_iter_3/quark_sampling_data_train_split_iter_3.json
-output_dir=/cluster/work/sachan/NLF/output_iter_3/
-file_prefix=quark_sampling_data_train_split_iter_3
+iteration=4
+input_sampling_file=/cluster/work/sachan/NLF/output_iter_4/quark_sampling_data_train_split_iter_4.json
+output_dir=/cluster/work/sachan/NLF/output_iter_4/
+file_prefix=quark_sampling_data_train_split_iter_4
 
 echo "--iteration: $iteration"
 echo "--input_sampling_file: $input_sampling_file"
