@@ -8,6 +8,7 @@
 #SBATCH --time=12:00:00
 #SBATCH --output="/cluster/work/sachan/NLF/slurm_output/quark_training_TLDR_5q_v6_noKL_2gpu_iter_3.out"
 #SBATCH --open-mode=append
+#SBATCH --mail-type=END
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate nlf_gptj
 

@@ -9,6 +9,7 @@
 #SBATCH --time=2:00:00
 #SBATCH --output="/cluster/work/sachan/NLF/slurm_output/ppl_quark_iter_3.out"
 #SBATCH --open-mode=append
+#SBATCH --mail-type=END
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate nlf_gptj
 
