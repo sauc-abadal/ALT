@@ -127,32 +127,37 @@ def main():
 
     num_generations = args['num_generations']
     
-    all_samples = []
+    samples = []
     with open(sampling_file, 'r') as f:
         lines = f.readlines()
         for line in lines:
             entry = json.loads(line)
-            prompt = entry["prompt"]
             generations = entry["generations"]
             assert len(generations) == num_generations
-            samples = [prompt + generation for generation in generations]
-            all_samples.extend(samples)
+            samples.append(entry)
     
-    print(f"Read a total of {len(all_samples)} samples from sampling_file.")
     # Split the data into chunks.
-    chunk_size = len(all_samples) // args["total_splits"] + 1
+    chunk_size = len(samples) // args["total_splits"] + 1
     start = (args["split_number"]) * chunk_size
-    end = min((args["split_number"] + 1) * chunk_size, len(all_samples))
-    all_samples = all_samples[start:end]
-    print(f"Thread {args['split_number']} processing {len(all_samples)} samples.")
+    end = min((args["split_number"] + 1) * chunk_size, len(samples))
+    samples = samples[start:end]
+    print(f"Thread {args['split_number']} processing {len(samples)*num_generations} samples.")
     
     # Save chunk of sampling data into json for writing the reward scores afterward
-    start_ = int(start/num_generations)
-    end_ = int(end/num_generations)
-    lines = lines[start_:end_]
     new_sampling_file = f"{save_dir}/{sampling_file.split('.')[0].split('/')[-1]}_reward_thread_{args['split_number']}.json"
     with open(new_sampling_file, 'w') as output_file:
-        output_file.write(''.join(lines))
+        for x in samples:
+            output_file.write(json.dumps(x) + '\n')
+
+    # flatten samples into a single lit
+    all_samples = []
+    for sample in samples:
+        prompt = sample["prompt"]
+        generations = sample["generations"]
+        y = [prompt + gen for gen in generations]
+        all_samples.extend(y)
+
+    assert len(all_samples) % num_generations == 0    
 
     rm_dataset = MyRMDataset(samples=all_samples)
     rm_collator = MyRMDataCollator(tokenizer=reward_model.tokenizer, max_length=reward_model.tokenizer.max_length)
