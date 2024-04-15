@@ -11,7 +11,7 @@ class NLFTrainingDataset():
     def __init__(
         self, 
         data_pool: NLFDataPool, 
-        tokenizer: AutoTokenizer,
+        eos_token: str,
         feedback_prefix: Optional[str] = "feedback:",
         prompt_prefix: Optional[str] = "input:"):
         """
@@ -21,15 +21,21 @@ class NLFTrainingDataset():
             data_pool (NLFDataPool): An instance of the NLFDataPool class containing the data.
         """
 
-        prompts, responses, feedbacks = data_pool.get_data()
+        samples = data_pool.get_samples()
         data_dict = {
-            "prompt": prompts,
-            "response": responses,
-            "feedback": feedbacks
+            "prompt": [],
+            "generation": [],
+            "quantile": []
         }
+        for sample in samples:
+            data_dict["prompt"].extend([sample["prompt"]] * len(sample["generations"]))
+            data_dict["generation"].extend(sample["generations"])
+            data_dict["feedback"].extend(sample["feedbacks"])
+            
         train_dataset = Dataset.from_dict(data_dict)
         raw_dataset = DatasetDict({"train:": train_dataset}) 
-        self.tokenizer = tokenizer
+        self.eos_token = eos_token
+    
         self.feedback_prefix = feedback_prefix
         self.prompt_prefix = prompt_prefix
 
@@ -40,18 +46,18 @@ class NLFTrainingDataset():
     
     def remove_leading_and_trailing_spaces(self, example):
         prompt = example["prompt"].strip()
-        response = example["response"].strip()
+        generation = example["generation"].strip()
         feedback = example["feedback"].strip()
         return {"prompt": prompt,              
-                "response": response,
+                "generation": generation,
                 "feedback": feedback}
     
     def compose_NLF_sequence(self, example):
         prompt = example["prompt"]
-        response = example["response"]
+        generation = example["generation"]
         feedback = example["feedback"]
         input_seq = self.feedback_prefix + " " + feedback + " " + self.prompt_prefix + " "  + prompt
-        output_seq = " " + response + self.tokenizer.eos_token
+        output_seq = " " + generation + self.eos_token
         return {"prompt": prompt,               
                 "input_seq": input_seq,
                 "output_seq": output_seq}
@@ -70,7 +76,7 @@ class NLFTrainingSequenceCollatorWithPadding(object):
         Args:
             examples: A list of examples, each represented as a dictionary with keys: "prompt", "input_seq", "output_seq".
             where "input_seq" contains the concatentation of feedback_prefix + feedback + prompt_prefix + prompt,
-            and "output_seq" contains the response.
+            and "output_seq" is a str that contains the concatenation of " " + generation + "eos.token".
 
         Returns:
             Dictionary with keys "inputs", "outputs", "prompts", "input_seqs" and "output_seqs".
