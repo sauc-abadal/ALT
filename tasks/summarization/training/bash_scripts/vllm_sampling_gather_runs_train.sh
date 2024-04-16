@@ -3,12 +3,12 @@
 source /cluster/project/sachan/sauc/anaconda3/bin/activate sample
 
 og_input_file=/cluster/work/sachan/NLF/Q0_conditioned_prompts_train.json
-input_file=/cluster/work/sachan/NLF/sampled_prompts_iter_4.json
+input_file=/cluster/work/sachan/NLF/sampled_prompts_iter_5.json
 
 shuf -n 2048 $og_input_file > $input_file
 
-output_dir=/cluster/work/sachan/NLF/output_iter_4
-model_path=/cluster/work/sachan/NLF/model/iter_3/model_ckp_7680
+output_dir=/cluster/work/sachan/NLF/output_iter_5
+model_path=/cluster/work/sachan/NLF/model/iter_4/model_ckp_10240
 tokenizer_path=/cluster/work/sachan/NLF/quark_TLDR_5q_tokenizer
 
 data_split=train
