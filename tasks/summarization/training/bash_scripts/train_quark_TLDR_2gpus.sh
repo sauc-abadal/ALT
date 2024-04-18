@@ -6,7 +6,7 @@
 #SBATCH --exclude eu-ts-02
 #SBATCH --mem-per-cpu=160000
 #SBATCH --time=12:00:00
-#SBATCH --output="/cluster/work/sachan/NLF/slurm_output/quark_training_TLDR_5q_v6_noKL_2gpu_iter_8.out"
+#SBATCH --output="/cluster/work/sachan/NLF/slurm_output/quark_training_TLDR_5q_v6_noKL_2gpu_iter_9.out"
 #SBATCH --open-mode=append
 #SBATCH --mail-type=END
 
@@ -15,12 +15,12 @@ source /cluster/project/sachan/sauc/anaconda3/bin/activate nlf_gptj
 accelerate_config=/cluster/project/sachan/sauc/nlf/tasks/summarization/training/configs/accelerate_config_ds_2gpu_ds_opt_ds_sch_cpu_off.yaml
 yaml_config=tasks/summarization/training/configs/quark_TLDR_config.yaml
 
-model_path=/cluster/work/sachan/NLF/model/iter_7/model_ckp_17920
+model_path=/cluster/work/sachan/NLF/model/iter_8/model_ckp_20480
 
-iteration=8
-input_sampling_file=/cluster/work/sachan/NLF/output_iter_8/quark_sampling_data_train_split_iter_8.json
-output_dir=/cluster/work/sachan/NLF/output_iter_8/
-file_prefix=quark_sampling_data_train_split_iter_8
+iteration=9
+input_sampling_file=/cluster/work/sachan/NLF/output_iter_9/quark_sampling_data_train_split_iter_9.json
+output_dir=/cluster/work/sachan/NLF/output_iter_9/
+file_prefix=quark_sampling_data_train_split_iter_9
 
 echo "--iteration: $iteration"
 echo "--input_sampling_file: $input_sampling_file"

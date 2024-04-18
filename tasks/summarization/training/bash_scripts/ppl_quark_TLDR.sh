@@ -7,16 +7,16 @@
 #SBATCH --gres=gpumem:80g
 #SBATCH --mem-per-cpu=96000
 #SBATCH --time=2:00:00
-#SBATCH --output="/cluster/work/sachan/NLF/slurm_output/ppl_quark_iter_8.out"
+#SBATCH --output="/cluster/work/sachan/NLF/slurm_output/ppl_quark_iter_9.out"
 #SBATCH --open-mode=append
 #SBATCH --mail-type=END
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate nlf_gptj
 
-iteration=8
-input_sampling_file=/cluster/work/sachan/NLF/output_iter_8/quark_sampling_data_valid_split_iter_8.json
-output_dir=/cluster/work/sachan/NLF/output_iter_8/
-file_prefix=quark_sampling_data_valid_split_iter_8
+iteration=9
+input_sampling_file=/cluster/work/sachan/NLF/output_iter_9/quark_sampling_data_valid_split_iter_9.json
+output_dir=/cluster/work/sachan/NLF/output_iter_9/
+file_prefix=quark_sampling_data_valid_split_iter_9
 
 echo "--iteration: $iteration"
 echo "--input_sampling_file: $input_sampling_file"
