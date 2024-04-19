@@ -34,7 +34,7 @@ class NLFTrainingDataset():
             data_dict["feedback"].extend(sample["feedbacks"])
             
         train_dataset = Dataset.from_dict(data_dict)
-        raw_dataset = DatasetDict({"train:": train_dataset}) 
+        raw_dataset = DatasetDict({"train": train_dataset}) 
         self.eos_token = eos_token
     
         self.feedback_prefix = feedback_prefix
