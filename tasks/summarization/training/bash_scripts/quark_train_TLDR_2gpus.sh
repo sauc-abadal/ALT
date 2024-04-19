@@ -6,7 +6,7 @@
 #SBATCH --exclude eu-ts-02
 #SBATCH --mem-per-cpu=160000
 #SBATCH --time=12:00:00
-#SBATCH --output="/cluster/work/sachan/NLF/slurm_output/quark_training_TLDR_5q_v6_noKL_2gpu_iter_10.out"
+#SBATCH --output="/cluster/work/sachan/NLF/quark/slurm_output/quark_training_TLDR_5q_v6_noKL_2gpu_iter_10.out"
 #SBATCH --open-mode=append
 #SBATCH --mail-type=END
 
@@ -15,11 +15,11 @@ source /cluster/project/sachan/sauc/anaconda3/bin/activate nlf_gptj
 accelerate_config=/cluster/project/sachan/sauc/nlf/tasks/summarization/training/configs/accelerate_config_ds_2gpu_ds_opt_ds_sch_cpu_off.yaml
 yaml_config=tasks/summarization/training/configs/quark_TLDR_config.yaml
 
-model_path=/cluster/work/sachan/NLF/model/iter_9/model_ckp_23040
+model_path=/cluster/work/sachan/NLF/quark/model/iter_9/model_ckp_23040
 
 iteration=10
-input_sampling_file=/cluster/work/sachan/NLF/output_iter_10/quark_sampling_data_train_split_iter_10.json
-output_dir=/cluster/work/sachan/NLF/output_iter_10/
+input_sampling_file=/cluster/work/sachan/NLF/quark/output_iter_10/quark_sampling_data_train_split_iter_10.json
+output_dir=/cluster/work/sachan/NLF/quark/output_iter_10/
 file_prefix=quark_sampling_data_train_split_iter_10
 
 echo "--iteration: $iteration"
@@ -41,4 +41,4 @@ accelerate launch --config_file $accelerate_config tasks/summarization/training/
     --ds_scheduler
 
 # launch evaluation 
-bash tasks/summarization/training/bash_scripts/vllm_sampling_gather_runs_valid.sh
+bash tasks/summarization/training/bash_scripts/quark_vllm_sampling_gather_runs_valid.sh

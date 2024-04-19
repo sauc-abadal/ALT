@@ -18,26 +18,27 @@ from tasks.summarization.models.policy import Policy
 # load parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', required=True, help='path to config file')
-parser.add_argument('--iteration', type=int, required=True, help='number of sampling/reward phases carried out')
+parser.add_argument('--out_dir', required=True, help='path to output save directory also containing the input json file')
+parser.add_argument('--input_file', required=True, help='name of the input json file contained in output dir, with prompts and generations to evaluate')
 args = parser.parse_args()
-iteration = args.iteration
+out_dir = args.out_dir
+input_file = args.input_file
 
 # load yaml file
 with open(args.config) as f:
     args = yaml.safe_load(f)
-    args['iteration'] = iteration
+    args['out_dir'] = out_dir
+    args['input_file'] = input_file
 
-class QuarkEvaluator:
+class PerplexityEvaluator:
     def __init__(self,
                  params: dict,
                  ref_policy: Policy,
-                 reward_file: str,
                  ) -> None:
         
         self.params = params
         self.ref_policy = ref_policy
         self.ref_policy.model.eval()
-        self.reward_file = reward_file
 
         self.right_tokenizer = AutoTokenizer.from_pretrained(
             args['model']['tokenizer']['name_or_path'],
@@ -48,20 +49,16 @@ class QuarkEvaluator:
             self.right_tokenizer.pad_token = self.right_tokenizer.eos_token # as GPT-J's tokenizer doesn't have a padding token -> eos_token = bos_token = unk_token = pad_token = "<|endoftext|>", eos_token_id = bos_token_id = unk_token_id = pad_token_id = 50256
             self.right_tokenizer.pad_token_id = self.right_tokenizer.eos_token_id
 
-    def eval(self, iteration) -> None:
-        print(f"[Sampling stage {iteration}] | Evaluating on the dev set ...")
-
-        prompts, generations, rewards = [], [], []
-        with open(self.reward_file, 'r') as input_file:
+    def perplexity(self) -> None:
+        prompts, generations = [], []
+        with open(self.params['input_file'], 'r') as input_file:
             lines = input_file.readlines()
             for line in lines:
                 entry = json.loads(line)
                 prompt = entry['prompt']
                 generations_ = entry['generations']
-                reward = entry['rewards']
                 prompts.append(prompt)
                 generations.extend(generations_)
-                rewards.extend(reward)
 
         batch_size = self.params['train']['training_batch_size_per_card']
 
@@ -93,11 +90,9 @@ class QuarkEvaluator:
                 perplexity = torch.exp(-1 * reduce_mean(ref_logprobs, masks.float(), axis=1))
                 perplexities.extend(perplexity.cpu().detach().numpy().tolist())
 
-        rewards = np.array(rewards)
-        avg_ppl, avg_reward = np.nanmean(perplexities), np.mean(rewards)
+        avg_ppl = np.nanmean(perplexities)
         dist_1, dist_2, dist_3 = distinctness(generations)
         print(f"Perplexity: {avg_ppl:+.2f}")
-        print(f"Avg. Reward: {avg_reward:.2f}")
         print(f"dist-1={dist_1:.3f}, dist-2={dist_2:.3f}, dist-3={dist_3:.3f}")
 
         # Adding the perplexity scores to each dictionary
@@ -107,11 +102,10 @@ class QuarkEvaluator:
             lines[i] = json.dumps(data)
 
         # Write the modified dictionaries with rewards to the sampling JSONL file
-        with open(self.reward_file, 'w') as out_file:
+        with open(self.params['input_file'], 'w') as out_file:
             out_file.write('\n'.join(lines))
 
-        with open(f"{self.params['sampling_dir']}/eval_metrics.txt", 'w') as f:
-            f.write(f"Avg. Reward: {avg_reward:.2f}\n")
+        with open(f"{self.params['out_dir']}/eval_metrics.txt", 'w') as f:
             f.write(f"Perplexity: {avg_ppl:+.2f}\n")
             f.write(f"dist-1={dist_1:.3f}, dist-2={dist_2:.3f}, dist-3={dist_3:.3f}")
 
@@ -128,21 +122,14 @@ def main():
         seed=args['train']['seed'], 
         cuda_deterministic=args['train']['cuda_deterministic'])
     
-    print("############### quark_eval.py ###############")
+    print("############### perplexity.py ###############")
 
     # Set GPUs
     num_gpus = torch.cuda.device_count()
     print(f'Detected {num_gpus} GPUS')
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    iteration = args['iteration']
 
-    # Set saving directories
-    args['save_dir'] = args['logging']['save_dir']
-    args['sampling_dir'] = os.path.join(args['save_dir'], f'output_iter_{iteration}')
-    ensure_dir(args['sampling_dir'])
-    
-    reward_file = f"{args['sampling_dir']}/quark_sampling_data_valid_split_iter_{iteration}.json"
-    print(f"Writing sampling (eval) data to reward_file: {reward_file}")
+    print(f"Writing sampling (eval) data to reward_file: {args['out_dir']}/{args['input_file']}")
 
     print(f'Initializing models ...')
 
@@ -176,14 +163,13 @@ def main():
     # --------------------- Set up Evaluator --------------------- #
     ################################################################
 
-    evaluator = QuarkEvaluator(
+    evaluator = PerplexityEvaluator(
         params=args,
         ref_policy=ref_policy,
-        reward_file=reward_file
     )     
 
     print("\n--------------------- STARTING EVALUATING! ---------------------\n")
-    evaluator.eval(iteration)
+    evaluator.perplexity()
     print("\n--------------------- EVALUATING COMPLETED ---------------------\n")
 
 if __name__ == "__main__":

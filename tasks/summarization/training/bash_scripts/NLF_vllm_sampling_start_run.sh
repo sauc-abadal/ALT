@@ -3,7 +3,7 @@
 #SBATCH --gpus=rtx_3090:1
 #SBATCH --time=4:00:00
 #SBATCH --mem-per-cpu=160G
-#SBATCH --output="/cluster/work/sachan/NLF/slurm_output/vllm_sampling_%j.out"
+#SBATCH --output="/cluster/work/sachan/NLF/nlf/slurm_output/vllm_sampling_%j.out"
 #SBATCH --open-mode=append
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate sample

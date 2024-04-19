@@ -11,6 +11,7 @@ class NLFTrainingDataset():
     def __init__(
         self, 
         data_pool: NLFDataPool, 
+        num_samples_per_prompt: int,
         eos_token: str,
         feedback_prefix: Optional[str] = "feedback:",
         prompt_prefix: Optional[str] = "input:"):
@@ -21,11 +22,11 @@ class NLFTrainingDataset():
             data_pool (NLFDataPool): An instance of the NLFDataPool class containing the data.
         """
 
-        samples = data_pool.get_samples()
+        samples = data_pool.get_samples(num_samples_per_prompt=num_samples_per_prompt)
         data_dict = {
             "prompt": [],
             "generation": [],
-            "quantile": []
+            "feedback": []
         }
         for sample in samples:
             data_dict["prompt"].extend([sample["prompt"]] * len(sample["generations"]))
