@@ -10,7 +10,7 @@ from data_pool import QuarkDataPool, NLFDataPool
 class NLFTrainingDataset():
     def __init__(
         self, 
-        data_pool: NLFDataPool, 
+        datapool: NLFDataPool, 
         num_samples_per_prompt: int,
         eos_token: str,
         feedback_prefix: Optional[str] = "feedback:",
