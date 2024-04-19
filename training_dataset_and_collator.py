@@ -22,7 +22,7 @@ class NLFTrainingDataset():
             data_pool (NLFDataPool): An instance of the NLFDataPool class containing the data.
         """
 
-        samples = data_pool.get_samples(num_samples_per_prompt=num_samples_per_prompt)
+        samples = datapool.get_samples(num_samples_per_prompt=num_samples_per_prompt)
         data_dict = {
             "prompt": [],
             "generation": [],
