@@ -51,7 +51,7 @@ class PerplexityEvaluator:
 
     def perplexity(self) -> None:
         prompts, generations = [], []
-        with open(self.params['input_file'], 'r') as input_file:
+        with open(f"{self.params['out_dir']}/{self.params['input_file']}", 'r') as input_file:
             lines = input_file.readlines()
             for line in lines:
                 entry = json.loads(line)
