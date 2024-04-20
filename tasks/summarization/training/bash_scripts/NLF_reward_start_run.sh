@@ -23,5 +23,6 @@ python tasks/summarization/training/reward.py \
     --output_dir "$3" \
     --split_number "$4" \
     --total_splits "$5" \
-    --num_generations "$6"
+    --num_generations "$6" \
+    --NLF
 

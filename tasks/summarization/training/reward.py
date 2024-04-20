@@ -22,12 +22,14 @@ parser.add_argument('--output_dir', required=True, type=str, help='otuput dir wh
 parser.add_argument('--split_number', required=True, type=int, help='thread number / split number of the data file, in range 0..total_splits-1')
 parser.add_argument('--total_splits', required=True, type=int, help='total number of threads / splits of the data file')
 parser.add_argument('--num_generations', required=True, type=int, help='number of generations per prompt')
+parser.add_argument('--NLF', action='store_true', help='NLF case for removing feedback part of the prompt')
 args = parser.parse_args()
 input_sampling_file = args.input_sampling_file
 output_dir = args.output_dir
 split_number = args.split_number
 total_splits = args.total_splits
 num_generations = args.num_generations
+nlf = args.NLF
 
 # load yaml file
 with open(args.config) as f:
@@ -37,6 +39,8 @@ with open(args.config) as f:
     args['split_number'] = split_number
     args['total_splits'] = total_splits
     args['num_generations'] = num_generations
+    args['NLF'] = nlf
+    print(f"NLF: {args['NLF']}")
 
 class Rewarder:
     def __init__(self,
@@ -78,6 +82,12 @@ class Rewarder:
         with open(self.sampling_file, 'w') as out_file:
             out_file.write('\n'.join(lines))
             out_file.write('\n')
+
+def remove_conditioning_from_str(sent: str, nlf: bool=False):
+        if nlf:
+            return sent.split("input: ")[-1].strip()
+        else:
+            return sent.split("_QUANTILE_TOKEN_0_")[-1].strip()
 
 def main():
 
@@ -152,9 +162,10 @@ def main():
     # flatten samples into a single lit
     all_samples = []
     for sample in samples:
-        prompt = sample["prompt"]
+        prompt = sample["prompt"].strip()
+        prompt = remove_conditioning_from_str(prompt, nlf=args["NLF"])
         generations = sample["generations"]
-        y = [prompt + gen for gen in generations]
+        y = [prompt + ' ' + gen.strip() for gen in generations]
         all_samples.extend(y)
 
     assert len(all_samples) % num_generations == 0    
