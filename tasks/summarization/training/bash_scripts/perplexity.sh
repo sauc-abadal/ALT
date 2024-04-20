@@ -24,7 +24,7 @@ echo "--output_dir: $output_dir"
 # concatenate previously sampled jsonl files (8 threads) into a single jsonl file
 bash tasks/summarization/training/bash_scripts/concatenate_jsonl.sh \
     "${output_dir}/${input_sampling_file}" \
-    "${output_dir}/valid_output_"{0..7}.json
+    "${output_dir}/${file_prefix}_reward_thread_"{0..7}.json
 
 # compute perplexities
 python tasks/summarization/training/perplexity.py \

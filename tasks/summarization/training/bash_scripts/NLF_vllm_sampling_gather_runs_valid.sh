@@ -30,5 +30,5 @@ sample8=$(sbatch tasks/summarization/training/bash_scripts/NLF_vllm_sampling_sta
 # the files can be concatenated without the need of adding a newline in between, as "\n" is already included 
 # at the end of every line.
 
-# Submit perplexity.sh after all jobs complete
-sbatch --dependency=afterok:$sample1:$sample2:$sample3:$sample4:$sample5:$sample6:$sample7:$sample8 tasks/summarization/training/bash_scripts/perplexity.sh
+# Submit NLF_reward_gather_runs_valid.sh after all jobs complete
+sbatch --dependency=afterok:$sample1:$sample2:$sample3:$sample4:$sample5:$sample6:$sample7:$sample8 tasks/summarization/training/bash_scripts/NLF_reward_gather_runs_valid.sh

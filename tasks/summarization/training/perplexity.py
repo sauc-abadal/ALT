@@ -102,7 +102,7 @@ class PerplexityEvaluator:
             lines[i] = json.dumps(data)
 
         # Write the modified dictionaries with rewards to the sampling JSONL file
-        with open(self.params['input_file'], 'w') as out_file:
+        with open(f"{self.params['out_dir']}/{self.params['input_file']}", 'w') as out_file:
             out_file.write('\n'.join(lines))
 
         with open(f"{self.params['out_dir']}/eval_metrics.txt", 'w') as f:
