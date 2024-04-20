@@ -22,6 +22,13 @@ model:
     name_or_path: CarperAI/openai_summarize_tldr_sft
   tokenizer:
     name_or_path: EleutherAI/gpt-j-6b
+reward:
+  batch_size: 96
+  half: true
+  load_state_dict: true
+  max_length: 550
+  name_or_path: CarperAI/openai_summarize_tldr_sft
+  state_dict_path: /cluster/work/sachan/sauc/summarize_from_feedback/reward_model/rm_checkpoint/pytorch_model.bin
 train:
   clip_grad: false
   cuda_deterministic: true
