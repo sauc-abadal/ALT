@@ -29,5 +29,5 @@ bash tasks/summarization/training/bash_scripts/concatenate_jsonl.sh \
 # compute perplexities
 python tasks/summarization/training/perplexity.py \
     --config tasks/summarization/training/configs/NLF_TLDR_config.yaml \
-    --out_file $output_dir \
+    --out_dir $output_dir \
     --input_file $input_sampling_file
