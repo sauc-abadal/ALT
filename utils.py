@@ -10,6 +10,8 @@ import collections
 
 WANDB_API_KEY = os.environ.get("WANDB_API_KEY", None)
 WANDB_API_KEY = str(WANDB_API_KEY)
+OPENAI_KEY = os.environ.get("OPENAI_KEY", None)
+OPENAI_KEY = str(OPENAI_KEY)
 
 NEGATIVE_INF = -100000.0
 
