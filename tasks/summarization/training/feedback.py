@@ -234,3 +234,7 @@ Always address both low and high scoring attributes. Use the format: "Feedback: 
                 samples[i]["total_scores"].append(f["total_score"])
             
             ofile.write(json.dumps(samples[i]) + '\n')
+
+if __name__ == "__main__":
+    main()
+    
