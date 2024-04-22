@@ -2,10 +2,10 @@
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate sample
 
-og_input_file=/cluster/work/sachan/NLF/nlf/NLF_conditioned_prompts_train.json
-input_file=/cluster/work/sachan/NLF/nlf/sampled_prompts_iter_2.json
+# og_input_file=/cluster/work/sachan/NLF/nlf/NLF_conditioned_prompts_train.json
+input_file=/cluster/work/sachan/NLF/nlf/NLF_conditioned_sampled_prompts_train_iter_2.json
 
-shuf -n 2048 $og_input_file > $input_file
+# shuf -n 2048 $og_input_file > $input_file
 
 output_dir=/cluster/work/sachan/NLF/nlf/output_iter_2
 model_path=/cluster/work/sachan/NLF/nlf/model/iter_1/model_ckp_2560
@@ -33,5 +33,5 @@ sample8=$(sbatch tasks/summarization/training/bash_scripts/NLF_vllm_sampling_sta
 # the files can be concatenated without the need of adding a newline in between, as "\n" is already included 
 # at the end of every line.
 
-# Submit feedback.sh after all jobs complete
-# sbatch --dependency=afterok:$sample1:$sample2:$sample3:$sample4:$sample5:$sample6:$sample7:$sample8 tasks/summarization/training/bash_scripts/feedback.sh
+# Submit NLF_sbatch_concatenate_jsonl.sh after all jobs complete
+sbatch --dependency=afterok:$sample1:$sample2:$sample3:$sample4:$sample5:$sample6:$sample7:$sample8 tasks/summarization/training/bash_scripts/NLF_sbatch_concatenate_jsonl.sh
