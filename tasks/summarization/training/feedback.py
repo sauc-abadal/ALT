@@ -220,7 +220,15 @@ Always address both low and high scoring attributes. Use the format: "Feedback: 
 
                 if not_responded_yet:
                     logger.error(f"Failed to get response for prompt {i} after retries.")
-                    feedbacks.append("None")
+                    feedbacks.append(
+                        {
+                            "feedback": None,
+                            "coherence": None,
+                            "accuracy": None,
+                            "coverage": None,
+                            "total_score": None
+                        }
+                    )
                     continue
                     # Handle the failure gracefully, e.g., logging or setting a default value
 
