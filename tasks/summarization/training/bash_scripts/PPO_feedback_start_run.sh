@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --time=3:00:00
+#SBATCH --time=4:00:00
 #SBATCH --mem-per-cpu=96G
 #SBATCH --output="/cluster/work/sachan/NLF/quark/slurm_output/ppo_gpt3.5_feedback_%j.out"
 #SBATCH --open-mode=append
