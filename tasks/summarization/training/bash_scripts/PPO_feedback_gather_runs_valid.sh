@@ -9,5 +9,5 @@ output_dir="/cluster/work/sachan/NLF/ppo/"
 num_generations=1
 
 # Submit SLURM jobs and capture job IDs
-feedback1=$(sbatch tasks/summarization/training/bash_scripts/ppo_feedback_start_run.sh "$config" "$input_sampling_file" "$output_dir" 0 1 "$num_generations" | awk '{print $4}')
+feedback1=$(sbatch tasks/summarization/training/bash_scripts/PPO_feedback_start_run.sh "$config" "$input_sampling_file" "$output_dir" 0 1 "$num_generations" | awk '{print $4}')
 
