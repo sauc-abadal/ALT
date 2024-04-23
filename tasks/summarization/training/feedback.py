@@ -130,7 +130,8 @@ def main():
     
     # Split the data into chunks.
     chunk_size = len(samples) // args["total_splits"] + 1
-    start = (args["split_number"]) * chunk_size
+    # start = (args["split_number"]) * chunk_size
+    start = 4625
     end = min((args["split_number"] + 1) * chunk_size, len(samples))
     samples = samples[start:end]
     print(f"Thread {args['split_number']} processing {len(samples)*num_generations} samples.")
@@ -177,8 +178,10 @@ Always address both low and high scoring attributes. Use the format: "Feedback: 
     # Initialize OpenAI client
     client = OpenAI(api_key=OPENAI_KEY)
 
-    new_sampling_file = f"{save_dir}/{sampling_file.split('.')[0].split('/')[-1]}_feedback_subset_{args['split_number']}.json"
-        
+    # new_sampling_file = f"{save_dir}/{sampling_file.split('.')[0].split('/')[-1]}_feedback_subset_{args['split_number']}.json"
+
+    new_sampling_file = f"{save_dir}/{sampling_file.split('.')[0].split('/')[-1]}_feedback_subset_1.json"
+         
     with open(new_sampling_file, 'w') as ofile:
         for i, data in enumerate(tqdm(samples)):
             prompt = data["prompt"].strip()
