@@ -7,15 +7,15 @@
 #SBATCH --gres=gpumem:80g
 #SBATCH --mem-per-cpu=96000
 #SBATCH --time=2:00:00
-#SBATCH --output="/cluster/work/sachan/NLF/nlf/slurm_output/NLF_ppl_iter_1.out"
+#SBATCH --output="/cluster/work/sachan/NLF/nlf/slurm_output/NLF_ppl_iter_2.out"
 #SBATCH --open-mode=append
 #SBATCH --mail-type=END
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate nlf_gptj
 
-output_dir=/cluster/work/sachan/NLF/nlf/output_iter_1/
-input_sampling_file=NLF_sampling_data_valid_split_iter_1.json
-file_prefix=NLF_sampling_data_valid_split_iter_1
+output_dir=/cluster/work/sachan/NLF/nlf/output_iter_2/
+input_sampling_file=NLF_sampling_data_valid_split_iter_2.json
+file_prefix=NLF_sampling_data_valid_split_iter_2
 
 echo "--iteration: $iteration"
 echo "--input_sampling_file: $input_sampling_file"

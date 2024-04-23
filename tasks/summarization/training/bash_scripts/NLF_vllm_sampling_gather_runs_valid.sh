@@ -4,8 +4,8 @@ source /cluster/project/sachan/sauc/anaconda3/bin/activate sample
 
 input_file=/cluster/work/sachan/NLF/nlf/NLF_conditioned_prompts_valid.json
 
-output_dir=/cluster/work/sachan/NLF/nlf/output_iter_1
-model_path=/cluster/work/sachan/NLF/nlf/model/iter_1/model_ckp_2560
+output_dir=/cluster/work/sachan/NLF/nlf/output_iter_2
+model_path=/cluster/work/sachan/NLF/nlf/model/iter_2/model_ckp_5120
 tokenizer_path=/cluster/work/sachan/NLF/nlf/NLF_TLDR_tokenizer
 
 data_split=valid

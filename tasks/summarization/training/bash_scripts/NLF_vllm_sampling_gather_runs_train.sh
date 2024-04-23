@@ -13,7 +13,7 @@ tokenizer_path=/cluster/work/sachan/NLF/nlf/NLF_TLDR_tokenizer
 
 data_split=train
 
-num_generations=96
+num_generations=10
 temperature=0.9
 top_p=0.9
 max_new_tokens=64
@@ -33,5 +33,5 @@ sample8=$(sbatch tasks/summarization/training/bash_scripts/NLF_vllm_sampling_sta
 # the files can be concatenated without the need of adding a newline in between, as "\n" is already included 
 # at the end of every line.
 
-# Submit NLF_sbatch_concatenate_jsonl.sh after all jobs complete
-sbatch --dependency=afterok:$sample1:$sample2:$sample3:$sample4:$sample5:$sample6:$sample7:$sample8 tasks/summarization/training/bash_scripts/NLF_sbatch_concatenate_jsonl.sh
+# Submit NLF_feedback_gather_runs_train.sh after all jobs complete
+sbatch --dependency=afterok:$sample1:$sample2:$sample3:$sample4:$sample5:$sample6:$sample7:$sample8 tasks/summarization/training/bash_scripts/NLF_feedback_gather_runs_train.sh
