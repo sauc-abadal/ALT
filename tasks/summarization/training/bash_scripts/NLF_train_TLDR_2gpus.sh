@@ -20,6 +20,7 @@ model_path=/cluster/work/sachan/NLF/nlf/model/iter_1/model_ckp_2560
 iteration=2
 input_sampling_file=/cluster/work/sachan/NLF/nlf/output_iter_2/NLF_sampling_data_train_split_iter_2.json
 output_dir=/cluster/work/sachan/NLF/nlf/output_iter_2/
+file_prefix=NLF_sampling_data_train_split_iter_2
 
 echo "--iteration: $iteration"
 echo "--input_sampling_file: $input_sampling_file"
