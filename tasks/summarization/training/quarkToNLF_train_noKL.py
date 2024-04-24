@@ -426,7 +426,7 @@ def main():
     accelerator.print("Loading the training dataset and dataloader from the DataPool.")
     training_dataset = QuarkToNLFTrainingDataset(
         datapool=data_pool, 
-        num_samples_per_prompt=args['train']['num_samples_per_prompt'],
+        num_samples_per_quantile=args['train']['num_samples_per_quantile'],
         eos_token=tokenizer.eos_token,
     ).dataset['train']
     training_seq_collator = QuarkToNLFTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
