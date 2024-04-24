@@ -2,7 +2,7 @@
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate sample
 
-input_file=/cluster/work/sachan/NLF/nlf/NLF_conditioned_prompts_valid_iter_1.json
+input_file=/cluster/work/sachan/NLF/nlf/output_iter_1/NLF_conditioned_prompts_valid_iter_1.json
 
 output_dir=/cluster/work/sachan/NLF/nlf/output_iter_1
 model_path=/cluster/work/sachan/NLF/nlf/model/iter_1/model_ckp_2560
