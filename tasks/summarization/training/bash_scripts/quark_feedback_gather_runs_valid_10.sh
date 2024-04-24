@@ -3,8 +3,8 @@
 source /cluster/project/sachan/sauc/anaconda3/bin/activate nlf_gptj
 
 config="tasks/summarization/training/configs/quark_TLDR_config.yaml"
-input_sampling_file="/cluster/work/sachan/NLF/quark/output_iter_10/quark_sampling_data_valid_split_iter_10.json"
-output_dir="/cluster/work/sachan/NLF/quark/output_iter_10/"
+input_sampling_file="/cluster/work/sachan/NLF/quark_sampling_data_valid_split_iter_10_feedback_subset_0_sentstripped.json"
+output_dir="/cluster/work/sachan/NLF/"
 
 num_generations=1
 
