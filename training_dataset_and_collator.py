@@ -221,7 +221,7 @@ class QuarkToNLFTrainingDataset():
         for sample in samples:
             data_dict["prompt"].extend([sample["prompt"]] * len(sample["generations"]))
             data_dict["generation"].extend(sample["generations"])
-            feedbacks = [quantile_to_feedback[f] for f in sample["feedbacks"]]
+            feedbacks = [quantile_to_feedback[f] for f in sample["quantiles"]]
             data_dict["feedback"].extend(feedbacks)
             
         train_dataset = Dataset.from_dict(data_dict)
