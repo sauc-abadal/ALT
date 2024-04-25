@@ -2,10 +2,10 @@
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate sample
 
-input_file=/cluster/work/sachan/NLF/quarkToNLF/Q0ToNLF_conditioned_prompts_valid.json
+input_file=/cluster/work/sachan/NLF/quarkToNLF_v2/Q0ToNLF_conditioned_prompts_valid.json
 
-output_dir=/cluster/work/sachan/NLF/quarkToNLF/output_iter_1
-model_path=/cluster/work/sachan/NLF/quarkToNLF/model/iter_1/model_ckp_2560
+output_dir=/cluster/work/sachan/NLF/quarkToNLF_v2/output_iter_1
+model_path=/cluster/work/sachan/NLF/quarkToNLF_v2/model/iter_1/model_ckp_2560
 tokenizer_path=/cluster/work/sachan/NLF/nlf/NLF_TLDR_tokenizer
 
 data_split=valid

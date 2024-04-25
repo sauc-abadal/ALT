@@ -7,10 +7,10 @@ data:
 logging:
   log_interval: 500
   save_interval: 1000
-  run_id: '14994'
-  run_name: quarkToNLF_TLDR_5q_v1
-  save_dir: /cluster/work/sachan/NLF/quarkToNLF
-  scratch_dir: /cluster/scratch/sabadal/nlf/quarkToNLF_TLDR_5q_v1
+  run_id: '14993'
+  run_name: quarkToNLF_TLDR_5q_v2
+  save_dir: /cluster/work/sachan/NLF/quarkToNLF_v2
+  scratch_dir: /cluster/scratch/sabadal/nlf/quarkToNLF_TLDR_5q_v2
   wandb_entity: sauc-ms-thesis
   wandb_log: true
   wandb_project: nlf

@@ -195,7 +195,7 @@ class QuarkToNLFTrainingDataset():
         datapool: QuarkDataPool,
         num_samples_per_quantile: int, 
         eos_token: str,
-        feedback_prefix: Optional[str] = "feedback:",
+        feedback_prefix: Optional[str] = None,
         prompt_prefix: Optional[str] = "input:"):
         """
         Initalizes a Dataset for handling sequences with reward quantile tokens prepended before the prompt.
@@ -205,11 +205,11 @@ class QuarkToNLFTrainingDataset():
         """
 
         quantile_to_feedback = {
-            "_QUANTILE_TOKEN_0_": "Very good summary.",
-            "_QUANTILE_TOKEN_1_": "Good summary.",
-            "_QUANTILE_TOKEN_2_": "Okay summary.",
-            "_QUANTILE_TOKEN_3_": "Bad summary.",
-            "_QUANTILE_TOKEN_4_": "Very bad summary."
+            "_QUANTILE_TOKEN_0_": "Excellent.",
+            "_QUANTILE_TOKEN_1_": "Good.",
+            "_QUANTILE_TOKEN_2_": "Mediocre.",
+            "_QUANTILE_TOKEN_3_": "Bad.",
+            "_QUANTILE_TOKEN_4_": "Horrible."
         }
 
         samples = datapool.get_samples(num_samples_per_quantile=num_samples_per_quantile)
@@ -248,7 +248,7 @@ class QuarkToNLFTrainingDataset():
         prompt = example["prompt"]
         generation = example["generation"]
         feedback = example["feedback"]
-        input_seq = self.feedback_prefix + " " + feedback + " " + self.prompt_prefix + " "  + prompt
+        input_seq = feedback + " " + self.prompt_prefix + " "  + prompt
         output_seq = " " + generation + self.eos_token
         return {"prompt": prompt,               
                 "input_seq": input_seq,

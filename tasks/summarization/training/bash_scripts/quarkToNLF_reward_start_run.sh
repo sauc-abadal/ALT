@@ -5,7 +5,7 @@
 #SBATCH --gpus=rtx_3090:1
 #SBATCH --mem-per-cpu=160G
 #SBATCH --time=4:00:00
-#SBATCH --output="/cluster/work/sachan/NLF/quarkToNLF/slurm_output/rewarding_%j.out"
+#SBATCH --output="/cluster/work/sachan/NLF/quarkToNLF_v2/slurm_output/rewarding_%j.out"
 #SBATCH --open-mode=append
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate nlf_gptj
@@ -23,5 +23,6 @@ python tasks/summarization/training/reward.py \
     --output_dir "$3" \
     --split_number "$4" \
     --total_splits "$5" \
-    --num_generations "$6"
+    --num_generations "$6" \
+    --NLF
 

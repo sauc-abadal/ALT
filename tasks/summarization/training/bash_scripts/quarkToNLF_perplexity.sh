@@ -7,13 +7,13 @@
 #SBATCH --gres=gpumem:80g
 #SBATCH --mem-per-cpu=96000
 #SBATCH --time=2:00:00
-#SBATCH --output="/cluster/work/sachan/NLF/quarkToNLF/slurm_output/quarkToNLF_ppl_iter_1.out"
+#SBATCH --output="/cluster/work/sachan/NLF/quarkToNLF_v2/slurm_output/quarkToNLF_ppl_iter_1.out"
 #SBATCH --open-mode=append
 #SBATCH --mail-type=END
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate nlf_gptj
 
-output_dir=/cluster/work/sachan/NLF/quarkToNLF/output_iter_1/
+output_dir=/cluster/work/sachan/NLF/quarkToNLF_v2/output_iter_1/
 input_sampling_file=quark_sampling_data_valid_split_iter_1.json
 file_prefix=quark_sampling_data_valid_split_iter_1
 
@@ -31,5 +31,3 @@ python tasks/summarization/training/perplexity.py \
     --config tasks/summarization/training/configs/quarkToNLF_TLDR_config.yaml \
     --out_dir $output_dir \
     --input_file $input_sampling_file
-
-bash quarkToNLF_feedback_gather_runs_valid.sh

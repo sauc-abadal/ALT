@@ -6,7 +6,7 @@
 #SBATCH --exclude eu-ts-02
 #SBATCH --mem-per-cpu=160000
 #SBATCH --time=12:00:00
-#SBATCH --output="/cluster/work/sachan/NLF/quarkToNLF/slurm_output/quarkToNLF_training_TLDR_v1_noKL_2gpu_iter_1.out"
+#SBATCH --output="/cluster/work/sachan/NLF/quarkToNLF_v2/slurm_output/quarkToNLF_training_TLDR_v1_noKL_2gpu_iter_1.out"
 #SBATCH --open-mode=append
 #SBATCH --mail-type=END
 
@@ -18,8 +18,8 @@ yaml_config=tasks/summarization/training/configs/quarkToNLF_TLDR_config.yaml
 model_path=CarperAI/openai_summarize_tldr_sft
 
 iteration=1
-input_sampling_file=/cluster/work/sachan/NLF/quarkToNLF/output_iter_1/quark_sampling_data_train_split_iter_1.json
-output_dir=/cluster/work/sachan/NLF/quarkToNLF/output_iter_1/
+input_sampling_file=/cluster/work/sachan/NLF/quarkToNLF_v2/output_iter_1/quark_sampling_data_train_split_iter_1.json
+output_dir=/cluster/work/sachan/NLF/quarkToNLF_v2/output_iter_1/
 
 echo "--iteration: $iteration"
 echo "--input_sampling_file: $input_sampling_file"
