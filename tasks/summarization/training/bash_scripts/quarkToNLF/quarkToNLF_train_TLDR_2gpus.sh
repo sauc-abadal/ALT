@@ -6,7 +6,7 @@
 #SBATCH --exclude eu-ts-02
 #SBATCH --mem-per-cpu=160000
 #SBATCH --time=12:00:00
-#SBATCH --output="/cluster/work/sachan/NLF/quarkToNLF_v2/slurm_output/quarkToNLF_training_TLDR_v1_noKL_2gpu_iter_1.out"
+#SBATCH --output="/cluster/work/sachan/NLF/quarkToNLF_v2/slurm_output/quarkToNLF_training_TLDR_v1_noKL_2gpu.out"
 #SBATCH --open-mode=append
 #SBATCH --mail-type=END
 
