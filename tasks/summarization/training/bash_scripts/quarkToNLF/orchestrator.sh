@@ -48,14 +48,14 @@ sample_t=$(sbatch --dependency=afterok:$sample_t1:$sample_t2:$sample_t3:$sample_
 
 # 2. ---------------- REWARDING (train) ----------------
 # Submit SLURM REWARD jobs (dependency on 'sample_t') and capture job IDs
-reward_t1=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 0 8 $num_generations | awk '{print $4}')
-reward_t2=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 1 8 $num_generations | awk '{print $4}')
-reward_t3=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 2 8 $num_generations | awk '{print $4}')
-reward_t4=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 3 8 $num_generations | awk '{print $4}')
-reward_t5=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 4 8 $num_generations | awk '{print $4}')
-reward_t6=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 5 8 $num_generations | awk '{print $4}')
-reward_t7=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 6 8 $num_generations | awk '{print $4}')
-reward_t8=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 7 8 $num_generations | awk '{print $4}')
+reward_t1=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 0 8 $num_generations_train | awk '{print $4}')
+reward_t2=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 1 8 $num_generations_train | awk '{print $4}')
+reward_t3=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 2 8 $num_generations_train | awk '{print $4}')
+reward_t4=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 3 8 $num_generations_train | awk '{print $4}')
+reward_t5=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 4 8 $num_generations_train | awk '{print $4}')
+reward_t6=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 5 8 $num_generations_train | awk '{print $4}')
+reward_t7=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 6 8 $num_generations_train | awk '{print $4}')
+reward_t8=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 7 8 $num_generations_train | awk '{print $4}')
 
 # concatenate 8 rewarded files (dependency on 'reward_t0..7') and capture job ID
 reward_t=$(sbatch --dependency=afterok:$reward_t1:$reward_t2:$reward_t3:$reward_t4:$reward_t5:$reward_t6:$reward_t7:$reward_t8 tasks/summarization/training/bash_scripts/sbatch_concatenate_jsonl.sh \
@@ -88,14 +88,14 @@ sample_v=$(sbatch --dependency=afterok:$sample_v1:$sample_v2:$sample_v3:$sample_
 
 # 5. ---------------- REWARDING (valid) ----------------
 # Submit SLURM REWARD jobs (dependency on 'sample_v') and capture job IDs
-reward_v1=$(sbatch --dependency=afterok:$sample_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_valid" "$output_dir" 0 8 $num_generations | awk '{print $4}')
-reward_v2=$(sbatch --dependency=afterok:$sample_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_valid" "$output_dir" 1 8 $num_generations | awk '{print $4}')
-reward_v3=$(sbatch --dependency=afterok:$sample_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_valid" "$output_dir" 2 8 $num_generations | awk '{print $4}')
-reward_v4=$(sbatch --dependency=afterok:$sample_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_valid" "$output_dir" 3 8 $num_generations | awk '{print $4}')
-reward_v5=$(sbatch --dependency=afterok:$sample_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_valid" "$output_dir" 4 8 $num_generations | awk '{print $4}')
-reward_v6=$(sbatch --dependency=afterok:$sample_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_valid" "$output_dir" 5 8 $num_generations | awk '{print $4}')
-reward_v7=$(sbatch --dependency=afterok:$sample_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_valid" "$output_dir" 6 8 $num_generations | awk '{print $4}')
-reward_v8=$(sbatch --dependency=afterok:$sample_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_valid" "$output_dir" 7 8 $num_generations | awk '{print $4}')
+reward_v1=$(sbatch --dependency=afterok:$sample_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_valid" "$output_dir" 0 8 $num_generations_valid | awk '{print $4}')
+reward_v2=$(sbatch --dependency=afterok:$sample_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_valid" "$output_dir" 1 8 $num_generations_valid | awk '{print $4}')
+reward_v3=$(sbatch --dependency=afterok:$sample_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_valid" "$output_dir" 2 8 $num_generations_valid | awk '{print $4}')
+reward_v4=$(sbatch --dependency=afterok:$sample_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_valid" "$output_dir" 3 8 $num_generations_valid | awk '{print $4}')
+reward_v5=$(sbatch --dependency=afterok:$sample_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_valid" "$output_dir" 4 8 $num_generations_valid | awk '{print $4}')
+reward_v6=$(sbatch --dependency=afterok:$sample_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_valid" "$output_dir" 5 8 $num_generations_valid | awk '{print $4}')
+reward_v7=$(sbatch --dependency=afterok:$sample_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_valid" "$output_dir" 6 8 $num_generations_valid | awk '{print $4}')
+reward_v8=$(sbatch --dependency=afterok:$sample_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_valid" "$output_dir" 7 8 $num_generations_valid | awk '{print $4}')
 
 # concatenate 8 rewarded files (dependency on 'reward_v0..7') and capture job ID
 reward_v=$(sbatch --dependency=afterok:$reward_v1:$reward_v2:$reward_v3:$reward_v4:$reward_v5:$reward_v6:$reward_v7:$reward_v8 tasks/summarization/training/bash_scripts/sbatch_concatenate_jsonl.sh \
@@ -104,5 +104,5 @@ reward_v=$(sbatch --dependency=afterok:$reward_v1:$reward_v2:$reward_v3:$reward_
 
 # 6. ---------------- PERPLEXITY (valid) ----------------
 # Submit SLURM PERPLEXITY job (dependency on 'reward_v')
-sbatch --dependency=afterok:$reward_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_train_start_run_2gpus.sh \
+sbatch --dependency=afterok:$reward_v tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_perplexity.sh \
     "$config" "$output_dir" "${file_prefix_valid}.json"
