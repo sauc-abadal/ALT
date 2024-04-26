@@ -27,7 +27,7 @@ file_prefix_valid="quark_sampling_data_valid_split_iter_${iteration}"
 if [ "$iteration" -eq 1 ]; then
     model_path="CarperAI/openai_summarize_tldr_sft"
 else
-    model_path="/cluster/work/sachan/NLF/quarkToNLF_v2/model/iter_$((iteration-1))/model_ckp_$((iteration-1*2560))"
+    model_path="/cluster/work/sachan/NLF/quarkToNLF_v2/model/iter_$((iteration-1))/model_ckp_$((iteration-1))"
 fi
 
 # 1. ---------------- SAMPLING (train) ----------------

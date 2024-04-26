@@ -176,23 +176,20 @@ class NLFTrainer:
             self.accelerator.print(f"\nSample {i+1}")
             self.accelerator.print(queries[i] + responses[i])
 
-    def save(self, step_num, save_dir: Optional[str] = None) -> None:
+    def save(self, step_num, iteration, save_dir: Optional[str] = None) -> None:
         if not save_dir:
             save_dir = self.params['model_dir']
 
         self.accelerator.wait_for_everyone()
         unwrapped_model = self.accelerator.unwrap_model(self.policy.model)
         unwrapped_model.save_pretrained(
-            f"{save_dir}/model_ckp_{step_num}",
+            f"{save_dir}/model_ckp_{iteration}",
             is_main_process=self.accelerator.is_main_process,
             save_function=self.accelerator.save,
             state_dict=self.accelerator.get_state_dict(self.policy.model),
         )
         self.accelerator.print(f"[step {step_num}] | Model checkpoint saved!")
 
-        self.accelerator.wait_for_everyone()
-        self.accelerator.save_state(output_dir=f"{save_dir}/full_ckp_{step_num}")
-        self.accelerator.print(f"[step {step_num}] | Accelerator state (Model, Optimizer, Scheduler, etc. checkpoint) saved!")
        
 def main():
 
@@ -484,7 +481,7 @@ def main():
                 steps_bar.update(1)
 
             if steps_taken % args['logging']['save_interval'] == 0:
-                trainer.save(step_num, save_dir=args["model_scratch_dir"])
+                trainer.save(step_num, step_num, save_dir=args["model_scratch_dir"])
 
         except Exception as e:
             accelerator.print("\nThere was an Exception while trying to perform trainer.step()!\n")
@@ -497,7 +494,7 @@ def main():
     steps_bar.close()
     accelerator.end_training()
     accelerator.wait_for_everyone()
-    trainer.save(step_num)
+    trainer.save(step_num, iteration)
     state_dict["overall_steps"] = step_num
     if accelerator.is_main_process:
         save_state(state_dict, state_file_path)
