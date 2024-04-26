@@ -70,7 +70,7 @@ train=$(sbatch --dependency=afterok:$reward_t tasks/summarization/training/bash_
 # 4. ---------------- SAMPLING (valid) ----------------
 # Submit SLURM SAMPLE jobs (dependency on 'train') and capture job IDs
 
-model_path="/cluster/work/sachan/NLF/quarkToNLF_v2/model/iter_${iteration}/model_ckp_$((iteration*2560))"
+model_path="/cluster/work/sachan/NLF/quarkToNLF_v2/model/iter_${iteration}/model_ckp_$((iteration))"
 
 sample_v1=$(sbatch --dependency=afterok:$train tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_valid" "$output_dir" 0 8 "$model_path" "$tokenizer_path" "$data_split_valid" $num_generations_valid $temperature_valid $top_p_valid $max_new_tokens_valid | awk '{print $4}')
 sample_v2=$(sbatch --dependency=afterok:$train tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_valid" "$output_dir" 1 8 "$model_path" "$tokenizer_path" "$data_split_valid" $num_generations_valid $temperature_valid $top_p_valid $max_new_tokens_valid | awk '{print $4}')
