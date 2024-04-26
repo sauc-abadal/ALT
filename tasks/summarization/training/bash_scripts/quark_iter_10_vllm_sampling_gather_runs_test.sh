@@ -27,4 +27,4 @@ sample4=$(sbatch tasks/summarization/training/bash_scripts/quark_vllm_sampling_s
 # at the end of every line.
 
 # Submit reward_gather_runs_valid.sh after all jobs complete
-sbatch --dependency=afterok:$sample1:$sample2:$sample3:$sample4 tasks/summarization/training/bash_scripts/quark_iter_10_reward_gather_runs_valid.sh
+sbatch --dependency=afterok:$sample1:$sample2:$sample3:$sample4 tasks/summarization/training/bash_scripts/quark_iter_10_reward_gather_runs_test.sh

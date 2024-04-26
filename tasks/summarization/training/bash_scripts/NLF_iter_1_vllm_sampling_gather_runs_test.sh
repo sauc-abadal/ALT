@@ -27,4 +27,4 @@ sample4=$(sbatch tasks/summarization/training/bash_scripts/NLF_vllm_sampling_sta
 # at the end of every line.
 
 # Submit NLF_reward_gather_runs_valid.sh after all jobs complete
-sbatch --dependency=afterok:$sample1:$sample2:$sample3:$sample4 tasks/summarization/training/bash_scripts/NLF_iter_1_reward_gather_runs_valid.sh
+sbatch --dependency=afterok:$sample1:$sample2:$sample3:$sample4 tasks/summarization/training/bash_scripts/NLF_iter_1_reward_gather_runs_test.sh
