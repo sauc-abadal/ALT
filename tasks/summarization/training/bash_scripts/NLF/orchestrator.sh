@@ -1,6 +1,6 @@
-config="tasks/summarization/training/configs/quarkToNLF_TLDR_config.yaml"
+config="tasks/summarization/training/configs/NLF_TLDR_config.yaml"
 accelerate_config=/cluster/project/sachan/sauc/nlf/tasks/summarization/training/configs/accelerate_config_ds_2gpu_ds_opt_ds_sch_cpu_off.yaml
-tokenizer_path="/cluster/work/sachan/NLF/nlf/NLF_TLDR_tokenizer"
+tokenizer_path="/cluster/work/sachan/NLF/quark/NLF_TLDR_tokenizer"
 
 num_generations_train=96
 data_split_train=train
@@ -15,7 +15,7 @@ top_p_valid=1.0
 max_new_tokens_valid=64
 
 iteration=2
-input_prompts_file_train="/cluster/work/sachan/NLF/quarkToNLF_v2/sampled_prompts_iter_${iteration}.json"
+input_prompts_file_train="/cluster/work/sachan/NLF/quark/sampled_prompts_iter_${iteration}.json"
 input_prompts_file_valid="/cluster/work/sachan/NLF/quarkToNLF_v2/Q0ToNLF_conditioned_prompts_valid.json"
 output_dir="/cluster/work/sachan/NLF/quarkToNLF_v2/output_iter_${iteration}/"
 

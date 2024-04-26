@@ -12,15 +12,6 @@
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate nlf_gptj
 
-accelerate_config=/cluster/project/sachan/sauc/nlf/tasks/summarization/training/configs/accelerate_config_ds_2gpu_ds_opt_ds_sch_cpu_off.yaml
-yaml_config=tasks/summarization/training/configs/quarkToNLF_TLDR_config.yaml
-
-model_path=CarperAI/openai_summarize_tldr_sft
-
-iteration=1
-input_sampling_file=/cluster/work/sachan/NLF/quarkToNLF_v2/output_iter_1/quark_sampling_data_train_split_iter_1.json
-output_dir=/cluster/work/sachan/NLF/quarkToNLF_v2/output_iter_1/
-
 echo "--accelerate_config: $1"
 echo "--yaml_config: $2"
 echo "--iteration: $3"
