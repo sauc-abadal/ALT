@@ -14,7 +14,7 @@ temperature_valid=0.0
 top_p_valid=1.0
 max_new_tokens_valid=64
 
-iteration=2
+iteration=3
 input_prompts_file_train="/cluster/work/sachan/NLF/quarkToNLF_v2/sampled_prompts_iter_${iteration}.json"
 input_prompts_file_valid="/cluster/work/sachan/NLF/quarkToNLF_v2/Q0ToNLF_conditioned_prompts_valid.json"
 output_dir="/cluster/work/sachan/NLF/quarkToNLF_v2/output_iter_${iteration}/"
