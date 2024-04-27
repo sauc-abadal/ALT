@@ -32,33 +32,37 @@ fi
 
 # 1. ---------------- SAMPLING (train) ----------------
 # Submit SLURM SAMPLE jobs (no dependency) and capture job IDs
-sample_t1=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 0 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
-sample_t2=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 1 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
-sample_t3=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 2 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
-sample_t4=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 3 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
-sample_t5=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 4 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
-sample_t6=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 5 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
-sample_t7=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 6 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
-sample_t8=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 7 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
+# sample_t1=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 0 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
+# sample_t2=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 1 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
+# sample_t3=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 2 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
+# sample_t4=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 3 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
+# sample_t5=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 4 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
+# sample_t6=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 5 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
+# sample_t7=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 6 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
+# sample_t8=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 7 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
 
 # concatenate 8 sampled files (dependency on 'sample_t0..7') and capture job ID
-sample_t=$(sbatch --dependency=afterok:$sample_t1:$sample_t2:$sample_t3:$sample_t4:$sample_t5:$sample_t6:$sample_t7:$sample_t8 tasks/summarization/training/bash_scripts/sbatch_concatenate_jsonl.sh \
-    "$input_sampling_file_train" \
-    "${output_dir}/${data_split_train}_output_"{0..7}.json | awk '{print $4}')
+# sample_t=$(sbatch --dependency=afterok:$sample_t1:$sample_t2:$sample_t3:$sample_t4:$sample_t5:$sample_t6:$sample_t7:$sample_t8 tasks/summarization/training/bash_scripts/sbatch_concatenate_jsonl.sh \
+#     "$input_sampling_file_train" \
+#     "${output_dir}/${data_split_train}_output_"{0..7}.json | awk '{print $4}')
 
 # 2. ---------------- REWARDING (train) ----------------
 # Submit SLURM REWARD jobs (dependency on 'sample_t') and capture job IDs
-reward_t1=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 0 8 $num_generations_train | awk '{print $4}')
-reward_t2=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 1 8 $num_generations_train | awk '{print $4}')
-reward_t3=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 2 8 $num_generations_train | awk '{print $4}')
+# reward_t1=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 0 8 $num_generations_train | awk '{print $4}')
+# reward_t2=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 1 8 $num_generations_train | awk '{print $4}')
+# reward_t3=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 2 8 $num_generations_train | awk '{print $4}')
 reward_t4=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 3 8 $num_generations_train | awk '{print $4}')
-reward_t5=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 4 8 $num_generations_train | awk '{print $4}')
-reward_t6=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 5 8 $num_generations_train | awk '{print $4}')
-reward_t7=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 6 8 $num_generations_train | awk '{print $4}')
-reward_t8=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 7 8 $num_generations_train | awk '{print $4}')
+# reward_t5=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 4 8 $num_generations_train | awk '{print $4}')
+# reward_t6=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 5 8 $num_generations_train | awk '{print $4}')
+# reward_t7=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 6 8 $num_generations_train | awk '{print $4}')
+# reward_t8=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 7 8 $num_generations_train | awk '{print $4}')
 
 # concatenate 8 rewarded files (dependency on 'reward_t0..7') and capture job ID
-reward_t=$(sbatch --dependency=afterok:$reward_t1:$reward_t2:$reward_t3:$reward_t4:$reward_t5:$reward_t6:$reward_t7:$reward_t8 tasks/summarization/training/bash_scripts/sbatch_concatenate_jsonl.sh \
+# reward_t=$(sbatch --dependency=afterok:$reward_t1:$reward_t2:$reward_t3:$reward_t4:$reward_t5:$reward_t6:$reward_t7:$reward_t8 tasks/summarization/training/bash_scripts/sbatch_concatenate_jsonl.sh \
+#     "$input_sampling_file_train" \
+#     "${output_dir}/${file_prefix_train}_reward_thread_"{0..7}.json | awk '{print $4}')
+
+reward_t=$(sbatch --dependency=afterok:$reward_t4 tasks/summarization/training/bash_scripts/sbatch_concatenate_jsonl.sh \
     "$input_sampling_file_train" \
     "${output_dir}/${file_prefix_train}_reward_thread_"{0..7}.json | awk '{print $4}')
 
