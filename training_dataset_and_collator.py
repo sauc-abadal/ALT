@@ -40,10 +40,20 @@ class NLFTrainingDataset():
         self.feedback_prefix = feedback_prefix
         self.prompt_prefix = prompt_prefix
 
-        self.dataset = raw_dataset.map(self.remove_leading_and_trailing_spaces, batched=False)
+        self.dataset = raw_dataset.map(self.remove_conditioning_from_str, batched=False)
+        self.dataset = self.dataset.map(self.remove_leading_and_trailing_spaces, batched=False)
         self.dataset = self.dataset.map(self.compose_NLF_sequence, batched=False)
         # dataset is not pre-tokenized as it can be very large, may be more efficient to tokenize each batch on the fly
         # (every sampling stage new samples are added into the data pool)
+    
+    def remove_conditioning_from_str(self, example: str):
+        prompt = example["prompt"]
+        prompt = prompt.split(self.prompt_prefix)[-1]
+        generation = example["generation"]
+        feedback = example["feedback"]
+        return {"prompt": prompt,              
+                "generation": generation,
+                "feedback": feedback}
     
     def remove_leading_and_trailing_spaces(self, example):
         prompt = example["prompt"].strip()
@@ -128,11 +138,21 @@ class QuarkTrainingDataset():
         raw_dataset = DatasetDict({"train": train_dataset}) 
         self.eos_token = eos_token
 
-        self.dataset = raw_dataset.map(self.remove_leading_and_trailing_spaces, batched=False)
+        self.dataset = raw_dataset.map(self.remove_conditioning_from_str, batched=False)
+        self.dataset = self.dataset.map(self.remove_leading_and_trailing_spaces, batched=False)
         self.dataset = self.dataset.map(self.compose_Quark_sequence, batched=False)
         # dataset is not pre-tokenized as it can be very large, may be more efficient to tokenize each batch on the fly
         # (every sampling stage new samples are added into the data pool)
-        
+    
+    def remove_conditioning_from_str(self, example: str):
+        prompt = example["prompt"]
+        prompt = prompt.split("_QUANTILE_TOKEN_0_")[-1]
+        generation = example["generation"]
+        quantile = example["quantile"]
+        return {"prompt": prompt,              
+                "generation": generation,
+                "quantile": quantile}
+
     def remove_leading_and_trailing_spaces(self, example):
         prompt = example["prompt"].strip()
         generation = example["generation"].strip()
@@ -231,11 +251,21 @@ class QuarkToNLFTrainingDataset():
         self.feedback_prefix = feedback_prefix
         self.prompt_prefix = prompt_prefix
 
-        self.dataset = raw_dataset.map(self.remove_leading_and_trailing_spaces, batched=False)
+        self.dataset = raw_dataset.map(self.remove_conditioning_from_str, batched=False)
+        self.dataset = self.dataset.map(self.remove_leading_and_trailing_spaces, batched=False)
         self.dataset = self.dataset.map(self.compose_NLF_sequence, batched=False)
         # dataset is not pre-tokenized as it can be very large, may be more efficient to tokenize each batch on the fly
         # (every sampling stage new samples are added into the data pool)
     
+    def remove_conditioning_from_str(self, example: str):
+        prompt = example["prompt"]
+        prompt = prompt.split(self.prompt_prefix)[-1]
+        generation = example["generation"]
+        feedback = example["feedback"]
+        return {"prompt": prompt,              
+                "generation": generation,
+                "feedback": feedback}
+
     def remove_leading_and_trailing_spaces(self, example):
         prompt = example["prompt"].strip()
         generation = example["generation"].strip()

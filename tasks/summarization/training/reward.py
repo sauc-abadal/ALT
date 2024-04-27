@@ -76,6 +76,8 @@ class Rewarder:
             start_idx = i * self.num_generations
             end_idx = i * self.num_generations + self.num_generations
             data['rewards'] = rewards[start_idx:end_idx]
+            data['prompt'] = remove_conditioning_from_str(data['prompt'], nlf=args["NLF"])
+
             lines[i] = json.dumps(data)
 
         # Write the modified dictionaries with rewards to the sampling JSONL file
