@@ -51,7 +51,7 @@ fi
 # reward_t1=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 0 8 $num_generations_train | awk '{print $4}')
 # reward_t2=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 1 8 $num_generations_train | awk '{print $4}')
 # reward_t3=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 2 8 $num_generations_train | awk '{print $4}')
-reward_t4=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 3 8 $num_generations_train | awk '{print $4}')
+# reward_t4=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 3 8 $num_generations_train | awk '{print $4}')
 # reward_t5=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 4 8 $num_generations_train | awk '{print $4}')
 # reward_t6=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 5 8 $num_generations_train | awk '{print $4}')
 # reward_t7=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 6 8 $num_generations_train | awk '{print $4}')
@@ -61,6 +61,8 @@ reward_t4=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/b
 # reward_t=$(sbatch --dependency=afterok:$reward_t1:$reward_t2:$reward_t3:$reward_t4:$reward_t5:$reward_t6:$reward_t7:$reward_t8 tasks/summarization/training/bash_scripts/sbatch_concatenate_jsonl.sh \
 #     "$input_sampling_file_train" \
 #     "${output_dir}/${file_prefix_train}_reward_thread_"{0..7}.json | awk '{print $4}')
+
+reward_t4=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 3 8 $num_generations_train | awk '{print $4}')
 
 reward_t=$(sbatch --dependency=afterok:$reward_t4 tasks/summarization/training/bash_scripts/sbatch_concatenate_jsonl.sh \
     "$input_sampling_file_train" \
