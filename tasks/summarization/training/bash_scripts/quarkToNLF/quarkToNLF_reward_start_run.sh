@@ -3,6 +3,7 @@
 #SBATCH -n 1
 #SBATCH --cpus-per-task=1
 #SBATCH --gpus=rtx_3090:1
+#SBATCH --exclude eu-g4-025
 #SBATCH --mem-per-cpu=160G
 #SBATCH --time=4:00:00
 #SBATCH --output="/cluster/work/sachan/NLF/quarkToNLF_v2/slurm_output/rewarding_%j.out"
