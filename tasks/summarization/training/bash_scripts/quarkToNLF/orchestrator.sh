@@ -62,9 +62,9 @@ fi
 #     "$input_sampling_file_train" \
 #     "${output_dir}/${file_prefix_train}_reward_thread_"{0..7}.json | awk '{print $4}')
 
-reward_t4=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 3 8 $num_generations_train | awk '{print $4}')
+reward_t5=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_reward_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 4 8 $num_generations_train | awk '{print $4}')
 
-reward_t=$(sbatch --dependency=afterok:$reward_t4 tasks/summarization/training/bash_scripts/sbatch_concatenate_jsonl.sh \
+reward_t=$(sbatch --dependency=afterok:$reward_t5 tasks/summarization/training/bash_scripts/sbatch_concatenate_jsonl.sh \
     "$input_sampling_file_train" \
     "${output_dir}/${file_prefix_train}_reward_thread_"{0..7}.json | awk '{print $4}')
 
