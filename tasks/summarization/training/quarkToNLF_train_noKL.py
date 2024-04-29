@@ -324,7 +324,9 @@ def main():
     # ------------------ Initialize DataPool --------------------- #
     ################################################################
         
-    data_pool = QuarkDataPool(num_quantiles=num_quantiles, reward_quantile_tokens=quantile_tokens)
+    data_pool = QuarkDataPool(num_quantiles=num_quantiles, 
+                              reward_quantile_tokens=quantile_tokens,
+                              tokenizer=tokenizer)
     
     if iteration > 1:
         # Load existing DataPool

@@ -320,7 +320,7 @@ def main():
     # ------------------ Initialize DataPool --------------------- #
     ################################################################
         
-    data_pool = NLFDataPool()
+    data_pool = NLFDataPool(tokenizer=tokenizer)
     
     if iteration > 1:
         # Load existing DataPool
