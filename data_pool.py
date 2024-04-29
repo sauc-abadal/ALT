@@ -11,9 +11,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class NLFDataPool():
-    def __init__(self):
+    def __init__(self, tokenizer: AutoTokenizer):
         self.datapool = {}
         self.EPSILON = 1e-9
+        self.tokenizer = tokenizer
     
     def flush_samples(self, drop_factor: float = 1.0):
         """
@@ -89,9 +90,30 @@ class NLFDataPool():
             else:
             # subsample the number of generations for each prompt   
                 num_elem_to_keep = min(num_samples_per_prompt, len(generations))
+
+                gen_lens = [len(gen) for gen in self.tokenizer(generations)["input_ids"]]
+
                 all_indices = list(range(len(generations)))
+                # shuffle indices to get a random permutation of the generations
                 random.shuffle(all_indices)
-                indices_to_keep = all_indices[:num_elem_to_keep]
+
+                # rejection sampling to get 'num_elements_to_keep' generations
+                # while rejecting generations with len 64 tokens
+                indices_to_keep = []
+                for idx in all_indices:
+                    if gen_lens[idx] < 64:
+                        indices_to_keep.append(idx)
+                        if len(indices_to_keep) == num_elem_to_keep:
+                            break
+                
+                # if we didn't manage to get the 'num_elem_to_keep' generations, 
+                # fill with 64-tokens generations
+                if len(indices_to_keep) != num_elem_to_keep:
+                    for idx in all_indices:
+                        if idx not in indices_to_keep:
+                            indices_to_keep.append(idx)
+                            if len(indices_to_keep) == num_elem_to_keep:
+                                break
 
                 sampled_generations = [generations[i] for i in indices_to_keep]
                 sampled_feedbacks = [feedbacks[i] for i in indices_to_keep]
@@ -144,11 +166,12 @@ class NLFDataPool():
         }
 
 class QuarkDataPool():
-    def __init__(self, num_quantiles: int, reward_quantile_tokens: List[str]):
+    def __init__(self, num_quantiles: int, reward_quantile_tokens: List[str], tokenizer: AutoTokenizer):
         self.datapool = {}
         self.num_quantiles = num_quantiles
         self.reward_quantile_tokens = reward_quantile_tokens
         self.EPSILON = 1e-9
+        self.tokenizer = tokenizer
     
     def flush_samples(self, drop_factor: float = 1.0):
         """
@@ -282,9 +305,30 @@ class QuarkDataPool():
                     sublist_quantiles = [quantiles[i] for i in sublist_indices]
 
                     num_elem_to_keep = min(num_samples_per_quantile, len(sublist_generations))
+
+                    gen_lens = [len(gen) for gen in self.tokenizer(sublist_generations)["input_ids"]]
+
                     all_indices = list(range(len(sublist_generations)))
+                    # shuffle indices to get a random permutation of the generations
                     random.shuffle(all_indices)
-                    indices_to_keep = all_indices[:num_elem_to_keep]
+
+                    # rejection sampling to get 'num_elements_to_keep' generations
+                    # while rejecting generations with len 64 tokens
+                    indices_to_keep = []
+                    for idx in all_indices:
+                        if gen_lens[idx] < 64:
+                            indices_to_keep.append(idx)
+                            if len(indices_to_keep) == num_elem_to_keep:
+                                break
+                    
+                    # if we didn't manage to get the 'num_elem_to_keep' generations, 
+                    # fill with 64-tokens generations
+                    if len(indices_to_keep) != num_elem_to_keep:
+                        for idx in all_indices:
+                            if idx not in indices_to_keep:
+                                indices_to_keep.append(idx)
+                                if len(indices_to_keep) == num_elem_to_keep:
+                                    break
 
                     sublist_generations = [sublist_generations[i] for i in indices_to_keep]
                     sublist_quantiles = [sublist_quantiles[i] for i in indices_to_keep]
