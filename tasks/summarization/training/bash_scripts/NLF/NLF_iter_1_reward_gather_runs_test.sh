@@ -14,7 +14,7 @@ bash tasks/summarization/training/bash_scripts/concatenate_jsonl.sh \
     "${output_dir}/test_output_"{0..3}.json
 
 # Submit SLURM jobs and capture job IDs
-reward1=$(sbatch tasks/summarization/training/bash_scripts/NLF_reward_start_run.sh "$config" "$input_sampling_file" "$output_dir" 0 4 "$num_generations" | awk '{print $4}')
-reward2=$(sbatch tasks/summarization/training/bash_scripts/NLF_reward_start_run.sh "$config" "$input_sampling_file" "$output_dir" 1 4 "$num_generations" | awk '{print $4}')
-reward3=$(sbatch tasks/summarization/training/bash_scripts/NLF_reward_start_run.sh "$config" "$input_sampling_file" "$output_dir" 2 4 "$num_generations" | awk '{print $4}')
-reward4=$(sbatch tasks/summarization/training/bash_scripts/NLF_reward_start_run.sh "$config" "$input_sampling_file" "$output_dir" 3 4 "$num_generations" | awk '{print $4}')
+reward1=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_reward_start_run.sh "$config" "$input_sampling_file" "$output_dir" 0 4 "$num_generations" | awk '{print $4}')
+reward2=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_reward_start_run.sh "$config" "$input_sampling_file" "$output_dir" 1 4 "$num_generations" | awk '{print $4}')
+reward3=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_reward_start_run.sh "$config" "$input_sampling_file" "$output_dir" 2 4 "$num_generations" | awk '{print $4}')
+reward4=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_reward_start_run.sh "$config" "$input_sampling_file" "$output_dir" 3 4 "$num_generations" | awk '{print $4}')

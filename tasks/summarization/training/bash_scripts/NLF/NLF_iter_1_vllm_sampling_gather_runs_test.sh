@@ -13,13 +13,13 @@ data_split=test
 num_generations=1
 temperature=0.0
 top_p=1.0
-max_new_tokens=64
+max_new_tokens=128
 
 # Submit SLURM jobs and capture job IDs
-sample1=$(sbatch tasks/summarization/training/bash_scripts/NLF_vllm_sampling_start_run.sh "$input_file" "$output_dir" 0 4 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
-sample2=$(sbatch tasks/summarization/training/bash_scripts/NLF_vllm_sampling_start_run.sh "$input_file" "$output_dir" 1 4 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
-sample3=$(sbatch tasks/summarization/training/bash_scripts/NLF_vllm_sampling_start_run.sh "$input_file" "$output_dir" 2 4 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
-sample4=$(sbatch tasks/summarization/training/bash_scripts/NLF_vllm_sampling_start_run.sh "$input_file" "$output_dir" 3 4 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample1=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_file" "$output_dir" 0 4 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample2=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_file" "$output_dir" 1 4 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample3=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_file" "$output_dir" 2 4 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
+sample4=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_file" "$output_dir" 3 4 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
 
 # individual jsonl files named saved in f"{args.output_dir}/{args.data_split}_output_{args.split_number}.json"
 
@@ -27,4 +27,4 @@ sample4=$(sbatch tasks/summarization/training/bash_scripts/NLF_vllm_sampling_sta
 # at the end of every line.
 
 # Submit NLF_reward_gather_runs_valid.sh after all jobs complete
-sbatch --dependency=afterok:$sample1:$sample2:$sample3:$sample4 tasks/summarization/training/bash_scripts/NLF_iter_1_reward_gather_runs_test.sh
+sbatch --dependency=afterok:$sample1:$sample2:$sample3:$sample4 tasks/summarization/training/bash_scripts/NLF/NLF_iter_1_reward_gather_runs_test.sh
