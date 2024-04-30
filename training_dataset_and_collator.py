@@ -1,6 +1,7 @@
 from datasets import Dataset, DatasetDict
 from transformers import AutoTokenizer
 import torch
+import spacy
 
 from typing import Union, List, Dict, Optional
 from copy import deepcopy
@@ -12,15 +13,18 @@ class NLFTrainingDataset():
         self, 
         datapool: NLFDataPool, 
         num_samples_per_prompt: int,
-        eos_token: str,
-        feedback_prefix: Optional[str] = "feedback:",
-        prompt_prefix: Optional[str] = "input:"):
+        tokenizer: AutoTokenizer,
+        feedback_prefix: Optional[str] = "feedback: ",
+        prompt_prefix: Optional[str] = "input: ",
+        max_new_tokens: int=64):
         """
         Initalizes a Dataset for handling sequences with Natural Language feedback tokens prepended before the prompt.
 
         Args:
             data_pool (NLFDataPool): An instance of the NLFDataPool class containing the data.
         """
+        
+        self.nlp = spacy.load("en_core_web_sm")
 
         samples = datapool.get_samples(num_samples_per_prompt=num_samples_per_prompt)
         data_dict = {
@@ -35,7 +39,9 @@ class NLFTrainingDataset():
             
         train_dataset = Dataset.from_dict(data_dict)
         raw_dataset = DatasetDict({"train": train_dataset}) 
-        self.eos_token = eos_token
+        self.tokenizer = tokenizer
+        self.eos_token = tokenizer.eos_token
+        self.max_new_tokens = max_new_tokens
     
         self.feedback_prefix = feedback_prefix
         self.prompt_prefix = prompt_prefix
@@ -46,6 +52,21 @@ class NLFTrainingDataset():
         # dataset is not pre-tokenized as it can be very large, may be more efficient to tokenize each batch on the fly
         # (every sampling stage new samples are added into the data pool)
     
+    def is_truncated(self, sentence: str):
+        doc = self.nlp(sentence)
+        if len(doc) > 0:
+            last_token = doc[-1]
+            # Check if the last token ends with a punctuation mark
+            if last_token.text[-1] in [".", "?", "!"]:
+                return False
+        return True
+
+    def is_X_tokens(self, sentence: str, x: int=64):
+        sent_len = len(self.tokenizer(sentence)["input_ids"])
+        if sent_len == x:
+            return True
+        return False
+
     def remove_conditioning_from_str(self, example: str):
         prompt = example["prompt"]
         prompt = prompt.split(self.prompt_prefix)[-1]
@@ -67,8 +88,13 @@ class NLFTrainingDataset():
         prompt = example["prompt"]
         generation = example["generation"]
         feedback = example["feedback"]
-        input_seq = self.feedback_prefix + " " + feedback + " " + self.prompt_prefix + " "  + prompt
-        output_seq = " " + generation + self.eos_token
+        input_seq = self.feedback_prefix + feedback + " " + self.prompt_prefix + prompt
+        if self.is_truncated(generation) and self.is_X_tokens(generation, x=self.max_new_tokens):
+            # don't append EOS token when generation is incomplete --> don't teach the model to always stop generating after 64 tokens
+            output_seq = " " + generation 
+        else:
+            # append EOS token when generation is complete --> teach the model to stop generating
+            output_seq = " " + generation + self.eos_token
         return {"prompt": prompt,               
                 "input_seq": input_seq,
                 "output_seq": output_seq}
@@ -115,13 +141,16 @@ class QuarkTrainingDataset():
         self, 
         datapool: QuarkDataPool,
         num_samples_per_quantile: int, 
-        eos_token: str):
+        tokenizer: AutoTokenizer,
+        max_new_tokens: int=64):
         """
         Initalizes a Dataset for handling sequences with reward quantile tokens prepended before the prompt.
 
         Args:
             data_pool (QuarkDataPool): An instance of the QuarkDataPool class containing the data.
         """
+
+        self.nlp = spacy.load("en_core_web_sm")
 
         samples = datapool.get_samples(num_samples_per_quantile=num_samples_per_quantile)
         data_dict = {
@@ -136,7 +165,9 @@ class QuarkTrainingDataset():
             
         train_dataset = Dataset.from_dict(data_dict)
         raw_dataset = DatasetDict({"train": train_dataset}) 
-        self.eos_token = eos_token
+        self.tokenizer = tokenizer
+        self.eos_token = tokenizer.eos_token
+        self.max_new_tokens = max_new_tokens
 
         self.dataset = raw_dataset.map(self.remove_conditioning_from_str, batched=False)
         self.dataset = self.dataset.map(self.remove_leading_and_trailing_spaces, batched=False)
@@ -144,6 +175,21 @@ class QuarkTrainingDataset():
         # dataset is not pre-tokenized as it can be very large, may be more efficient to tokenize each batch on the fly
         # (every sampling stage new samples are added into the data pool)
     
+    def is_truncated(self, sentence: str):
+        doc = self.nlp(sentence)
+        if len(doc) > 0:
+            last_token = doc[-1]
+            # Check if the last token ends with a punctuation mark
+            if last_token.text[-1] in [".", "?", "!"]:
+                return False
+        return True
+
+    def is_X_tokens(self, sentence: str, x: int=64):
+        sent_len = len(self.tokenizer(sentence)["input_ids"])
+        if sent_len == x:
+            return True
+        return False
+
     def remove_conditioning_from_str(self, example: str):
         prompt = example["prompt"]
         prompt = prompt.split("_QUANTILE_TOKEN_0_")[-1]
@@ -166,8 +212,12 @@ class QuarkTrainingDataset():
         generation = example["generation"]
         quantile = example["quantile"]
         input_seq = quantile + prompt
-        output_seq = " " + generation + self.eos_token
-        
+        if self.is_truncated(generation) and self.is_X_tokens(generation, x=self.max_new_tokens):
+            # don't append EOS token when generation is incomplete --> don't teach the model to always stop generating after 64 tokens
+            output_seq = " " + generation 
+        else:
+            # append EOS token when generation is complete --> teach the model to stop generating
+            output_seq = " " + generation + self.eos_token
         return {"prompt": prompt,               
                 "input_seq": input_seq,
                 "output_seq": output_seq}
@@ -214,15 +264,18 @@ class QuarkToNLFTrainingDataset():
         self, 
         datapool: QuarkDataPool,
         num_samples_per_quantile: int, 
-        eos_token: str,
-        feedback_prefix: Optional[str] = None,
-        prompt_prefix: Optional[str] = "input:"):
+        tokenizer: AutoTokenizer,
+        feedback_prefix: Optional[str] = "",
+        prompt_prefix: Optional[str] = "input: ",
+        max_new_tokens: int=64):
         """
         Initalizes a Dataset for handling sequences with reward quantile tokens prepended before the prompt.
 
         Args:
             data_pool (QuarkDataPool): An instance of the QuarkDataPool class containing the data.
         """
+        
+        self.nlp = spacy.load("en_core_web_sm")
 
         quantile_to_feedback = {
             "_QUANTILE_TOKEN_0_": "Excellent.",
@@ -246,7 +299,9 @@ class QuarkToNLFTrainingDataset():
             
         train_dataset = Dataset.from_dict(data_dict)
         raw_dataset = DatasetDict({"train": train_dataset}) 
-        self.eos_token = eos_token
+        self.tokenizer = tokenizer
+        self.eos_token = tokenizer.eos_token
+        self.max_new_tokens = max_new_tokens
     
         self.feedback_prefix = feedback_prefix
         self.prompt_prefix = prompt_prefix
@@ -257,6 +312,21 @@ class QuarkToNLFTrainingDataset():
         # dataset is not pre-tokenized as it can be very large, may be more efficient to tokenize each batch on the fly
         # (every sampling stage new samples are added into the data pool)
     
+    def is_truncated(self, sentence: str):
+        doc = self.nlp(sentence)
+        if len(doc) > 0:
+            last_token = doc[-1]
+            # Check if the last token ends with a punctuation mark
+            if last_token.text[-1] in [".", "?", "!"]:
+                return False
+        return True
+
+    def is_X_tokens(self, sentence: str, x: int=64):
+        sent_len = len(self.tokenizer(sentence)["input_ids"])
+        if sent_len == x:
+            return True
+        return False
+
     def remove_conditioning_from_str(self, example: str):
         prompt = example["prompt"]
         prompt = prompt.split(self.prompt_prefix)[-1]
@@ -278,8 +348,13 @@ class QuarkToNLFTrainingDataset():
         prompt = example["prompt"]
         generation = example["generation"]
         feedback = example["feedback"]
-        input_seq = feedback + " " + self.prompt_prefix + " "  + prompt
-        output_seq = " " + generation + self.eos_token
+        input_seq = self.feedback_prefix + feedback + " " + self.prompt_prefix  + prompt
+        if self.is_truncated(generation) and self.is_X_tokens(generation, x=self.max_new_tokens):
+            # don't append EOS token when generation is incomplete --> don't teach the model to always stop generating after 64 tokens
+            output_seq = " " + generation 
+        else:
+            # append EOS token when generation is complete --> teach the model to stop generating
+            output_seq = " " + generation + self.eos_token
         return {"prompt": prompt,               
                 "input_seq": input_seq,
                 "output_seq": output_seq}

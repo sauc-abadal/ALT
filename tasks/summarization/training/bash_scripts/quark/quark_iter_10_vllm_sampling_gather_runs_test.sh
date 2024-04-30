@@ -2,7 +2,7 @@
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate sample
 
-input_file=/cluster/work/sachan/NLF/CarperAI_test_prompts/quark_iter_10/CarperAI_100samples_test_set.json
+input_file=/cluster/work/sachan/NLF/CarperAI_test_prompts/quark_iter_10/TLDR_test_split_prompts.json
 
 output_dir=/cluster/work/sachan/NLF/CarperAI_test_prompts/quark_iter_10
 model_path=/cluster/work/sachan/NLF/quark/model/iter_10/model_ckp_25600

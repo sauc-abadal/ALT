@@ -420,7 +420,10 @@ def main():
     training_dataset = NLFTrainingDataset(
         datapool=data_pool, 
         num_samples_per_prompt=args['train']['num_samples_per_prompt'],
-        eos_token=tokenizer.eos_token
+        tokenizer=tokenizer,
+        feedback_prefix="feedback: ",
+        prompt_prefix="input: ",
+        max_new_tokens=64
     ).dataset['train']
     training_seq_collator = NLFTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
     training_dataloader = DataLoader(

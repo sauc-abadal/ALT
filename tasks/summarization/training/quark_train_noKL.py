@@ -386,7 +386,7 @@ def main():
     ################################################################
         
     data_pool = QuarkDataPool(
-        reward_quantile_tokens=quantile_tokens, num_quantiles=num_quantiles
+        reward_quantile_tokens=quantile_tokens, num_quantiles=num_quantiles, tokenizer=tokenizer
     )
     
     if iteration > 1:
@@ -490,9 +490,10 @@ def main():
     training_dataset = QuarkTrainingDataset(
         datapool=data_pool, 
         num_samples_per_quantile=args['train']['num_samples_per_quantile'],
-        eos_token=tokenizer.eos_token
+        tokenizer=tokenizer,
+        max_new_tokens=64
     ).dataset['train']
-    training_seq_collator = QuarkTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
+    training_seq_collator = QuarkTrainingSequenceCollatorWithPadding(tokenizer=tokenizer)
     training_dataloader = DataLoader(
         dataset=training_dataset,
         batch_size=args['train']['training_batch_size_per_card'],

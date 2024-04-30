@@ -324,9 +324,7 @@ def main():
     # ------------------ Initialize DataPool --------------------- #
     ################################################################
         
-    data_pool = QuarkDataPool(num_quantiles=num_quantiles, 
-                              reward_quantile_tokens=quantile_tokens,
-                              tokenizer=tokenizer)
+    data_pool = QuarkDataPool(num_quantiles=num_quantiles, reward_quantile_tokens=quantile_tokens, tokenizer=tokenizer)
     
     if iteration > 1:
         # Load existing DataPool
@@ -426,9 +424,12 @@ def main():
     training_dataset = QuarkToNLFTrainingDataset(
         datapool=data_pool, 
         num_samples_per_quantile=args['train']['num_samples_per_quantile'],
-        eos_token=tokenizer.eos_token,
+        tokenizer=tokenizer.eos_token,
+        feedback_prefix="",
+        prompt_prefix="input: ",
+        max_new_tokens=64
     ).dataset['train']
-    training_seq_collator = QuarkToNLFTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
+    training_seq_collator = QuarkToNLFTrainingSequenceCollatorWithPadding(tokenizer=tokenizer)
     training_dataloader = DataLoader(
         dataset=training_dataset,
         batch_size=args['train']['training_batch_size_per_card'],
