@@ -424,7 +424,7 @@ def main():
     training_dataset = QuarkToNLFTrainingDataset(
         datapool=data_pool, 
         num_samples_per_quantile=args['train']['num_samples_per_quantile'],
-        tokenizer=tokenizer.eos_token,
+        tokenizer=tokenizer,
         feedback_prefix="",
         prompt_prefix="input: ",
         max_new_tokens=64
