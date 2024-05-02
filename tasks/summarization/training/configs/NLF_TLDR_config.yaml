@@ -7,10 +7,10 @@ data:
 logging:
   log_interval: 500
   save_interval: 1000
-  run_id: '19990'
-  run_name: NLF_TLDR_5q_v1
-  save_dir: /cluster/work/sachan/NLF/nlf
-  scratch_dir: /cluster/scratch/sabadal/nlf/NLF_TLDR_5q_v1
+  run_id: '33345'
+  run_name: NLF_TLDR_v2
+  save_dir: /cluster/work/sachan/NLF/nlf_v2
+  scratch_dir: /cluster/scratch/sabadal/nlf/NLF_TLDR_v2
   wandb_entity: sauc-ms-thesis
   wandb_log: true
   wandb_project: nlf

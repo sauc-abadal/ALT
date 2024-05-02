@@ -67,6 +67,8 @@ def exponential_backoff(retries=5, delay=1):
             delay *= 2
     logger.error("Max retries exceeded, operation failed.")
 
+# previous parser
+"""
 def parse_feedback(feedback_sentence: str) -> Dict[str, Union[float, str]]:
     
     feedback_sentence = feedback_sentence.strip()
@@ -109,6 +111,37 @@ def parse_feedback(feedback_sentence: str) -> Dict[str, Union[float, str]]:
         "coverage": coverage,
         "total_score": total_score
     }
+"""
+# current parser
+def parse_feedback(feedback_sentence: str) -> Dict[str, Union[float, str]]:
+    
+    feedback_sentence = feedback_sentence.strip()
+
+    # Define regular expressions to extract the desired information
+    analysis_regex = r"Analysis:(.*?)(?=Feedback|Score)"
+    feedback_regex = r"Feedback:(.*?)(?=Score)"
+    score_regex = r"Score: ([\d.]+)"
+
+    # Extract analysis
+    analysis_match = re.search(analysis_regex, feedback_sentence, re.DOTALL)
+    analysis = analysis_match.group(1).strip() if analysis_match else None
+
+    # Extract feedback
+    feedback_match = re.search(feedback_regex, feedback_sentence, re.DOTALL)
+    feedback = feedback_match.group(1).strip() if feedback_match else None
+
+    # Extract score
+    score_match = re.search(score_regex, feedback_sentence)
+    score = float(score_match.group(1)) if score_match else None
+    
+    if (analysis is None) or (feedback is None) or (score is None):
+        return None
+    
+    return {
+        "analysis": analysis,
+        "feedback": feedback,
+        "score": score
+    }
 
 def main():
     sampling_file = args['input_sampling_file']
@@ -138,7 +171,9 @@ def main():
     # Remove conditioning from prompt before providing feedback
     for sample in samples:
         sample["prompt"] = remove_conditioning_from_str(sample["prompt"].strip(), nlf=args["NLF"])  
-    
+
+    # Previous prompt template
+    """
     prompt_template = '''
 A good summary is a shorter piece of text that has the \
 essence of the original. It tries to accomplish the same \
@@ -173,7 +208,50 @@ __ \
 3. Output a very short single sentence of 10 words or less only commenting on the accuracy, coverage and coherence of the summary. \
 Always address both low and high scoring attributes. Use the format: "Feedback: <feedback>". \
 '''
+    """
 
+    # Current prompt template
+    prompt_template = '''
+A good summary is a shorter piece of text that has the \
+essence of the original. It tries to accomplish the same \
+purpose and conveys the key information from the original \
+post. Below we define three evaluation axes for summary \
+quality: coherence, accuracy, and coverage. \
+__ \
+- A summary is coherent if it’s easy \
+to understand when read on its own and free of English errors. \
+A summary is not coherent if it’s difficult to understand \
+what the summary is trying to say. \
+__ \
+- Accuracy: This axis answers the question “does the factual \
+information in the summary accurately match the post?” \
+A summary is accuracte if it doesn't contain made up facts \
+and the presented information is grounded in the original post. \
+__ \
+- Coverage: This axis answers the question “how well does \
+the summary cover the important information in the post?” \
+Be mindful that a summary is a shorter piece of the original post \
+and that there is always a tradeoff between coverage and conciness. \
+A summary has good coverage if it mentions the main information \
+from the post while being as concise as possible. \
+__
+POST: {} \
+__
+SUMMARY: {} \
+__
+You are an expert at summarization. After examining the post and the summary: \
+__ \
+1. Output an analysis of what you thought of the summary based on coherence, accuracy, and coverage using the format: "Analysis: <analysis>". \
+__ \
+2. Output a very short single sentence of 10 words or less only commenting on the accuracy, coverage and coherence of the summary. \
+Include in the sentence not only the deficiencies in some of the evaluation axes but also the strenghts. \
+Use the format: "Feedback: <feedback>". \
+__ \
+3. Output a overall summary score out of 3 (being 0 the worst and 3 the best). Add 1 point if the \
+summary is coherent, 1 point if it's accurate, and another 1 point if it has great coverage. \
+Use the format: "Score: <score>."
+'''.strip()
+    
     # Initialize OpenAI client
     client = OpenAI(api_key=OPENAI_KEY)
 
@@ -181,21 +259,18 @@ Always address both low and high scoring attributes. Use the format: "Feedback: 
    
     with open(new_sampling_file, 'w') as ofile:
         for i, data in enumerate(tqdm(samples)):
-            prompt = data["prompt"].strip()
-            prompt = prompt.replace("\n", " ").replace("\r", " ")
+            prompt = data["prompt"].replace("TL;DR:", "").strip()
             
             feedbacks = []
             
+            samples[i]["analysis"] = []
             samples[i]["feedbacks"] = []
-            samples[i]["coh_scores"] = []
-            samples[i]["acc_scores"] = []
-            samples[i]["cov_scores"] = []
-            samples[i]["total_scores"] = []
-            
+            samples[i]["scores"] = []
+
             for generation in data["generations"]:
                 generation = generation.strip()
                 not_responded_yet = True
-                
+
                 # Retry mechanism using exponential backoff
                 for _ in exponential_backoff():
                     try:
@@ -208,13 +283,13 @@ Always address both low and high scoring attributes. Use the format: "Feedback: 
                                 {"role": "user", "content": prompt_template.format(prompt, generation).replace("__", "\n")}
                             ]
                         )
-                        
+
                         tmp_feedback = response.choices[0].message.content
                         parsed_feedback = parse_feedback(tmp_feedback)
                         if parsed_feedback:
                             not_responded_yet = False
                             break  # Exit the retry loop if successful and correctly parsed
-                            
+
                     except Exception as e:
                         logger.error(f"Error occurred: {e}")
 
@@ -222,25 +297,21 @@ Always address both low and high scoring attributes. Use the format: "Feedback: 
                     logger.error(f"Failed to get response for prompt {i} after retries.")
                     feedbacks.append(
                         {
+                            "analysis": None,
                             "feedback": None,
-                            "coherence": None,
-                            "accuracy": None,
-                            "coverage": None,
-                            "total_score": None
+                            "score": None,
                         }
                     )
                     continue
                     # Handle the failure gracefully, e.g., logging or setting a default value
 
                 feedbacks.append(parsed_feedback)
-            
+
             for f in feedbacks:
+                samples[i]["analysis"].append(f["analysis"])
                 samples[i]["feedbacks"].append(f["feedback"])
-                samples[i]["coh_scores"].append(f["coherence"])
-                samples[i]["acc_scores"].append(f["accuracy"])
-                samples[i]["cov_scores"].append(f["coverage"])
-                samples[i]["total_scores"].append(f["total_score"])
-            
+                samples[i]["scores"].append(f["score"])
+
             ofile.write(json.dumps(samples[i]) + '\n')
 
 if __name__ == "__main__":
