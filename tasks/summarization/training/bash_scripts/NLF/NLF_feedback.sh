@@ -19,6 +19,6 @@ feedback_t7=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_feedback_
 feedback_t8=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_feedback_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 7 8 $num_generations_train | awk '{print $4}')
 
 # concatenate 8 feedback files (dependency on 'feedback_t0..7') and capture job ID
-feedback_t=$(sbatch --dependency=afterok:$feedback_t1:$feedback_t2:$feedback_t3:$feedback_t4:$feedback5:$feedback_t6:$feedback_t7:$feedback_t8 tasks/summarization/training/bash_scripts/sbatch_concatenate_jsonl.sh \
+feedback_t=$(sbatch --dependency=afterok:$feedback_t1:$feedback_t2:$feedback_t3:$feedback_t4:$feedback_t5:$feedback_t6:$feedback_t7:$feedback_t8 tasks/summarization/training/bash_scripts/sbatch_concatenate_jsonl.sh \
     "$input_sampling_file_train" \
     "${output_dir}/${file_prefix_train}_feedback_subset_"{0..7}.json | awk '{print $4}')

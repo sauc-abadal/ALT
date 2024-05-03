@@ -45,14 +45,18 @@ class NLFDataPool():
         
     def add_samples(self, prompts: List[str], generations: List[List[str]], feedbacks: List[List[str]]):
         for i, prompt in enumerate(prompts):
+
+            gens = [g for g, f in zip(generations[i], feedbacks[i]) if f is not None]
+            feeds = [f for f in feedbacks[i] if f is not None]
+
             if prompt not in self.datapool:
                 self.datapool[prompt] = {
-                    "generations": generations[i],
-                    "feedbacks": feedbacks[i],
+                    "generations": gens,
+                    "feedbacks": feeds,
                 }
             else:
-                self.datapool[prompt]["generations"].extend(generations[i])
-                self.datapool[prompt]["feedbacks"].extend(feedbacks[i])
+                self.datapool[prompt]["generations"].extend(gens)
+                self.datapool[prompt]["feedbacks"].extend(feeds)
     
     def update_datapool(self, sampling_file: Union[str, os.PathLike], drop_factor: float = 1.0):
         
