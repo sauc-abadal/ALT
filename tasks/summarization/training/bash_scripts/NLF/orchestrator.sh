@@ -14,7 +14,7 @@ temperature_valid=0.0
 top_p_valid=1.0
 max_new_tokens_valid=64
 
-iteration=5
+iteration=6
 input_prompts_file_train="/cluster/work/sachan/NLF/nlf_v2/sampled_prompts_varied_feedbacks_iter_${iteration}.json"
 input_prompts_file_valid="/cluster/work/sachan/NLF/nlf_v2/NLF_conditioned_prompts_valid_varied_feedbacks.json"
 output_dir="/cluster/work/sachan/NLF/nlf_v2/output_iter_${iteration}/"
