@@ -20,11 +20,3 @@ sample1=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF
 sample2=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_file" "$output_dir" 1 4 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
 sample3=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_file" "$output_dir" 2 4 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
 sample4=$(sbatch tasks/summarization/training/bash_scripts/quarkToNLF/quarkToNLF_vllm_sampling_start_run.sh "$input_file" "$output_dir" 3 4 "$model_path" "$tokenizer_path" "$data_split" $num_generations $temperature $top_p $max_new_tokens | awk '{print $4}')
-
-# individual jsonl files named saved in f"{args.output_dir}/{args.data_split}_output_{args.split_number}.json"
-
-# the files can be concatenated without the need of adding a newline in between, as "\n" is already included 
-# at the end of every line.
-
-# Submit reward_gather_runs_valid.sh after all jobs complete
-sbatch --dependency=afterok:$sample1:$sample2:$sample3:$sample4 tasks/summarization/training/bash_scripts/baselines/CNN_PPO_reward_gather_runs_test.sh
