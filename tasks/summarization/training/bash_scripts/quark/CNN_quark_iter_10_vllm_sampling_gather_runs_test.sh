@@ -2,9 +2,9 @@
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate sample
 
-input_file=/cluster/work/sachan/NLF/CNN_dialy_mail/quark_iter_10/CNN_daily_mail_test_split_prompts.json
+input_file=/cluster/work/sachan/NLF/CNN_daily_mail/quark_iter_10/CNN_daily_mail_test_split_prompts.json
 
-output_dir=/cluster/work/sachan/NLF/CNN_dialy_mail/quark_iter_10
+output_dir=/cluster/work/sachan/NLF/CNN_daily_mail/quark_iter_10
 model_path=/cluster/work/sachan/NLF/quark/model/iter_10/model_ckp_25600
 tokenizer_path=/cluster/work/sachan/NLF/quark/quark_TLDR_5q_tokenizer
 
