@@ -2,10 +2,10 @@
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate sample
 
-input_file=/cluster/work/sachan/NLF/CarperAI_test_prompts/nlf_iter_1/NLF_static_sampling_data_valid_split_100random_subset.json
+input_file=/cluster/work/sachan/NLF/CarperAI_test_prompts/nlf_iter_5/NLF_static_sampling_data_valid_split_100random_subset.json
 
-output_dir=/cluster/work/sachan/NLF/CarperAI_test_prompts/nlf_iter_1
-model_path="/cluster/work/sachan/NLF/nlf_v2/model/iter_1/model_ckp_1"
+output_dir=/cluster/work/sachan/NLF/CarperAI_test_prompts/nlf_iter_5
+model_path="/cluster/work/sachan/NLF/nlf_v2/model/iter_5/model_ckp_5"
 tokenizer_path=/cluster/work/sachan/NLF/nlf/NLF_TLDR_tokenizer
 
 data_split=valid_static
