@@ -2,10 +2,10 @@
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate sample
 
-input_file=/cluster/work/sachan/NLF/CarperAI_test_prompts/nlf_iter_1/TLDR_test_split_prompts.json
+input_file=/cluster/work/sachan/NLF/CarperAI_test_prompts/nlf_iter_6/TLDR_test_split_prompts.json
 
-output_dir=/cluster/work/sachan/NLF/CarperAI_test_prompts/nlf_iter_1
-model_path=/cluster/work/sachan/NLF/nlf/model/iter_1/model_ckp_1
+output_dir=/cluster/work/sachan/NLF/CarperAI_test_prompts/nlf_iter_6
+model_path=/cluster/work/sachan/NLF/nlf/model/iter_6/model_ckp_6
 tokenizer_path=/cluster/work/sachan/NLF/nlf/NLF_TLDR_tokenizer
 
 data_split=test
@@ -27,4 +27,4 @@ sample4=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_vllm_sampling
 # at the end of every line.
 
 # Submit NLF_reward_gather_runs_valid.sh after all jobs complete
-sbatch --dependency=afterok:$sample1:$sample2:$sample3:$sample4 tasks/summarization/training/bash_scripts/NLF/NLF_iter_1_reward_gather_runs_test.sh
+sbatch --dependency=afterok:$sample1:$sample2:$sample3:$sample4 tasks/summarization/training/bash_scripts/NLF/NLF_iter_6_reward_gather_runs_test.sh
