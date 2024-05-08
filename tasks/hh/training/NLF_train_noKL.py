@@ -352,14 +352,14 @@ def main():
     # ------------ Prepare Optimizer and Schedulers -------------- #
     ################################################################
 
-    if 'unfrozen_layers_ratio' in args['train']:
-        # Freeze 70% of policy model backbone
-        unfrozen_layers_ratio = args['train']['unfrozen_layers_ratio']
-        layers = policy.model.transformer.h
-        num_layers = len(layers)
-        num_unfrozen = int(unfrozen_layers_ratio * num_layers)
-        for layer in layers[:-num_unfrozen]:
-            layer.requires_grad_(False)
+    # if 'unfrozen_layers_ratio' in args['train']:
+    #     # Freeze 70% of policy model backbone
+    #     unfrozen_layers_ratio = args['train']['unfrozen_layers_ratio']
+    #     layers = policy.model.transformer.h
+    #     num_layers = len(layers)
+    #     num_unfrozen = int(unfrozen_layers_ratio * num_layers)
+    #     for layer in layers[:-num_unfrozen]:
+    #         layer.requires_grad_(False)
 
     num_trainable_params = 0
     num_non_trainable_params = 0
@@ -421,7 +421,7 @@ def main():
         datapool=data_pool, 
         num_samples_per_prompt=args['train']['num_samples_per_prompt'],
         tokenizer=tokenizer,
-        feedback_prefix="feedback: ",
+        feedback_prefix="",
         prompt_prefix="input: ",
         max_new_tokens=64
     ).dataset['train']
