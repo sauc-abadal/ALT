@@ -4,7 +4,7 @@ num_generations_train=1
 
 output_dir="/cluster/work/sachan/NLF/CarperAI_test_prompts/nlf_iter_5/"
 input_sampling_file_train="/cluster/work/sachan/NLF/CarperAI_test_prompts/nlf_iter_5/NLF_dynamic_sampling_data_valid_split_100random_subset.json"
-file_prefix_train="NLF_sampling_data_valid_split_100random_subset"
+file_prefix_train="NLF_dynamic_sampling_data_valid_split_100random_subset"
 
 # ---------------- FEEDBACK (train) ----------------
 # Submit SLURM FEEDBACK jobs (dependency on 'sample_t') and capture job IDs
