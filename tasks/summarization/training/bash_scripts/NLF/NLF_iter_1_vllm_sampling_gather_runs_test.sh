@@ -5,8 +5,8 @@ source /cluster/project/sachan/sauc/anaconda3/bin/activate sample
 input_file=/cluster/work/sachan/NLF/CarperAI_test_prompts/nlf_iter_1/TLDR_test_split_prompts.json
 
 output_dir=/cluster/work/sachan/NLF/CarperAI_test_prompts/nlf_iter_1
-model_path=/cluster/work/sachan/NLF/nlf/model/iter_1/model_ckp_1
-tokenizer_path=/cluster/work/sachan/NLF/nlf/NLF_TLDR_tokenizer
+model_path=/cluster/work/sachan/NLF/nlf_v2/model/iter_1/model_ckp_1
+tokenizer_path=/cluster/work/sachan/NLF/nlf_v2/NLF_TLDR_tokenizer
 
 data_split=test
 
