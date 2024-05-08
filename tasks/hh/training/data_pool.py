@@ -43,20 +43,23 @@ class NLFDataPool():
                 self.datapool[prompt]["generations"] = generations
                 self.datapool[prompt]["feedbacks"] = feedbacks
         
-    def add_samples(self, prompts: List[str], generations: List[List[str]], feedbacks: List[List[str]]):
+    def add_samples(self, prompts: List[str], generations: List[List[str]], feedbacks: List[List[str]], scores: List[List[str]]):
         for i, prompt in enumerate(prompts):
             
             g = [gen for gen, feed in zip(generations[i], feedbacks[i]) if feed is not None]
             f = [feed for feed in feedbacks[i] if feed is not None]
+            s = [sc for sc, feed in zip(scores[i], feedbacks[i]) if feed is not None]
 
             if prompt not in self.datapool:
                 self.datapool[prompt] = {
                     "generations": g,
                     "feedbacks": f,
+                    "scores": s
                 }
             else:
                 self.datapool[prompt]["generations"].extend(g)
                 self.datapool[prompt]["feedbacks"].extend(f)
+                self.datapool[prompt]["scores"].extend(s)
     
     def update_datapool(self, sampling_file: Union[str, os.PathLike], drop_factor: float = 1.0):
         
@@ -64,7 +67,7 @@ class NLFDataPool():
         self.flush_samples(drop_factor=drop_factor)
         
         # get newly sampled data
-        prompts, all_generations, all_feedbacks = [], [], []
+        prompts, all_generations, all_feedbacks, all_scores = [], [], [], []
         with open(sampling_file, 'r') as f:
             lines = f.readlines()
             for line in lines:
@@ -76,9 +79,10 @@ class NLFDataPool():
                 prompts.append(prompt)
                 all_generations.append(generations)
                 all_feedbacks.append(feedbacks)
+                all_scores.append(scores)
         
         # add data to datapool
-        self.add_samples(prompts, all_generations, all_feedbacks)
+        self.add_samples(prompts, all_generations, all_feedbacks, all_scores)
     
     def get_samples(self, num_samples_per_prompt: Optional[int] = None) -> List[Dict[str, List[str]]]:
         
@@ -87,25 +91,25 @@ class NLFDataPool():
         for prompt in self.datapool.keys():
             generations = self.datapool[prompt]["generations"]
             feedbacks = self.datapool[prompt]["feedbacks"]
+            scores = self.datapool[prompt]["scores"]
             
             if not num_samples_per_prompt:
             # return all generations for each prompt
                 sampled_generations = generations
                 sampled_feedbacks = feedbacks
-
+                sampled_scores = scores
             else:
             # subsample the number of generations for each prompt  
                 sampled_generations = []
                 sampled_feedbacks = []
+                sampled_scores = []
                 
                 indices_used = []
                 num_samples_to_draw = {
-                    "Very helpful and harmless": num_samples_per_prompt // 4,
-                    "Very helpful but harmful": num_samples_per_prompt // 4,
-                    "Helpful and harmless": num_samples_per_prompt // 4,
-                    "Helpful but harmful": num_samples_per_prompt // 4,
-                    "Not helpful and harmless": num_samples_per_prompt // 4,
-                    "Not helpful and harmless": num_samples_per_prompt // 4
+                    0: num_samples_per_prompt // 4,
+                    1: num_samples_per_prompt // 4,
+                    2: num_samples_per_prompt // 4,
+                    3: num_samples_per_prompt // 4
                 }
                 
                 still_to_draw = num_samples_per_prompt % 4
