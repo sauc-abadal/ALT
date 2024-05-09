@@ -39,7 +39,7 @@ train:
   max_input_length: 1024
   sampling_batch_size_per_card: 32
   seed: 42
-  total_episodes: 40960
+  total_episodes: 163840
   warmup_ratio: 0.05
   training_batch_size_per_card: 8
   num_samples_per_prompt: 10

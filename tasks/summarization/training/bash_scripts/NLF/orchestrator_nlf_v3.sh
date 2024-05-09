@@ -1,7 +1,7 @@
-og_input_file=/cluster/work/sachan/NLF/quark/ref_prompts_train.json
-input_file=/cluster/work/sachan/NLF/nlf_v3/sampled_prompts_iter_1.json
+# og_input_file=/cluster/work/sachan/NLF/quark/ref_prompts_train.json
+# input_file=/cluster/work/sachan/NLF/nlf_v3/sampled_prompts_iter_1.json
 
-shuf -n 8192 $og_input_file > $input_file
+# shuf -n 8192 $og_input_file > $input_file
 
 config="tasks/summarization/training/configs/NLFv3_TLDR_config.yaml"
 accelerate_config=/cluster/project/sachan/sauc/nlf/tasks/summarization/training/configs/accelerate_config_ds_2gpu_ds_opt_ds_sch_cpu_off.yaml
@@ -49,10 +49,10 @@ fi
 # feedback_t3=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/NLF/NLF_feedback_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 2 4 $num_generations_train | awk '{print $4}')
 # feedback_t4=$(sbatch --dependency=afterok:$sample_t tasks/summarization/training/bash_scripts/NLF/NLF_feedback_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 3 4 $num_generations_train | awk '{print $4}')
 
-feedback_t1=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_feedback_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 0 4 $num_generations_train | awk '{print $4}')
-feedback_t2=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_feedback_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 1 4 $num_generations_train | awk '{print $4}')
-feedback_t3=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_feedback_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 2 4 $num_generations_train | awk '{print $4}')
-feedback_t4=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_feedback_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 3 4 $num_generations_train | awk '{print $4}')
+# feedback_t1=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_feedback_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 0 4 $num_generations_train | awk '{print $4}')
+# feedback_t2=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_feedback_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 1 4 $num_generations_train | awk '{print $4}')
+# feedback_t3=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_feedback_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 2 4 $num_generations_train | awk '{print $4}')
+# feedback_t4=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_feedback_start_run.sh "$config" "$input_sampling_file_train" "$output_dir" 3 4 $num_generations_train | awk '{print $4}')
 
 
 # # concatenate 8 feedback files (dependency on 'feedback_t0..3') and capture job ID
@@ -60,7 +60,10 @@ feedback_t4=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_feedback_
 #     "$input_sampling_file_train" \
 #     "${output_dir}/${file_prefix_train}_feedback_subset_"{0..3}.json | awk '{print $4}')
 
-# # 3. ---------------- TRAINING ----------------
-# # Submit SLURM TRAIN job (dependency on 'reward_t') and capture job ID
+# 3. ---------------- TRAINING ----------------
+# Submit SLURM TRAIN job (dependency on 'reward_t') and capture job ID
 # train=$(sbatch --dependency=afterok:$feedback_t tasks/summarization/training/bash_scripts/NLF/NLF_train_start_run_2gpus.sh \
 #     "$accelerate_config" "$config" "$iteration" "$input_sampling_file_train" "$model_path" | awk '{print $4}')
+
+train=$(sbatch tasks/summarization/training/bash_scripts/NLF/NLF_train_start_run_2gpus.sh \
+    "$accelerate_config" "$config" "$iteration" "$input_sampling_file_train" "$model_path" | awk '{print $4}')
