@@ -1,4 +1,4 @@
-config="tasks/summarization/training/configs/NLF_TLDR_config.yaml"
+config="tasks/summarization/training/configs/quarkToNLF_TLDR_config.yaml"
 accelerate_config=/cluster/project/sachan/sauc/nlf/tasks/summarization/training/configs/accelerate_config_ds_2gpu_ds_opt_ds_sch_cpu_off.yaml
 tokenizer_path="/cluster/work/sachan/NLF/nlf_v2/NLF_TLDR_tokenizer"
 
