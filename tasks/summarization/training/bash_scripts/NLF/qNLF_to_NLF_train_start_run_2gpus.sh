@@ -3,7 +3,7 @@
 #SBATCH -n 1
 #SBATCH --cpus-per-task=1
 #SBATCH --gpus=a100_80gb:2
-#SBATCH --exclude eu-ts-02,eu-a65-06
+#SBATCH --exclude eu-ts-02
 #SBATCH --mem-per-cpu=160000
 #SBATCH --time=24:00:00
 #SBATCH --output="/cluster/work/sachan/NLF/quarkToNLF_v2/slurm_output/qNLF_to_NLF_training_TLDR_noKL_2gpu.out"
