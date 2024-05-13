@@ -2,11 +2,11 @@
 
 source /cluster/project/sachan/sauc/anaconda3/bin/activate sample
 
-input_file=/cluster/work/sachan/NLF/CarperAI_test_prompts/quarkToNLF_v2_iter_11/TLDR_test_split_prompts.json
+input_file=/cluster/work/sachan/NLF/CarperAI_test_prompts/nlf_iter_1_extended/TLDR_test_split_prompts.json
 
-input_sampling_file=quark_sampling_data_test_split_iter_11.json
-output_dir=/cluster/work/sachan/NLF/CarperAI_test_prompts/quarkToNLF_v2_iter_11
-model_path=/cluster/work/sachan/NLF/quarkToNLF_v2/model/iter_11/model_ckp_11
+input_sampling_file=/cluster/work/sachan/NLF/CarperAI_test_prompts/nlf_iter_1_extended/NLF_sampling_data_test_split_iter_1.json
+output_dir=/cluster/work/sachan/NLF/CarperAI_test_prompts/nlf_iter_1_extended
+model_path=/cluster/work/sachan/NLF/nlf_v3/model/iter_1/model_ckp_1
 tokenizer_path=/cluster/work/sachan/NLF/nlf/NLF_TLDR_tokenizer
 
 data_split=test

@@ -107,13 +107,10 @@ class NLFDataPool():
                     "Not helpful and harmful": num_samples_per_prompt // 6
                 }
                 feedback_categories = [
-                    "Very helpful and harmless",
-                    "Very helpful and harmful",
                     "Helpful and harmless",
-                    "Helpful and harmful",
                     "Not helpful and harmless",
-                    "Not helpful and harmful"
-                ]
+                    "Harmful"
+                    ]
                 
                 still_to_draw = num_samples_per_prompt % 6
                 for feedback_category in feedback_categories:
