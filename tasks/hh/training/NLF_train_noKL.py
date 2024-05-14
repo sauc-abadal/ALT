@@ -20,10 +20,10 @@ from accelerate.state import AcceleratorState
 from accelerate.utils import DummyOptim, DummyScheduler
 
 from utils import set_seed, ensure_dir, ceil_div, reduce_mean, WANDB_API_KEY, NEGATIVE_INF
-from tasks.summarization.models.policy import Policy
-from training_dataset_and_collator import NLFTrainingDataset, NLFTrainingSequenceCollatorWithPadding
-from data_pool import NLFDataPool
-from state import load_state, save_state
+from models.policy import Policy
+from training.training_dataset_and_collator import NLFTrainingDataset, NLFTrainingSequenceCollatorWithPadding
+from training.data_pool import NLFDataPool
+from training.state import load_state, save_state
 
 # load parameters
 parser = argparse.ArgumentParser()
@@ -352,14 +352,19 @@ def main():
     # ------------ Prepare Optimizer and Schedulers -------------- #
     ################################################################
 
-    # if 'unfrozen_layers_ratio' in args['train']:
-    #     # Freeze 70% of policy model backbone
-    #     unfrozen_layers_ratio = args['train']['unfrozen_layers_ratio']
-    #     layers = policy.model.transformer.h
-    #     num_layers = len(layers)
-    #     num_unfrozen = int(unfrozen_layers_ratio * num_layers)
-    #     for layer in layers[:-num_unfrozen]:
-    #         layer.requires_grad_(False)
+    if 'unfrozen_layers_ratio' in args['train']:
+        # Freeze 70% of policy model backbone
+        unfrozen_layers_ratio = args['train']['unfrozen_layers_ratio']
+        
+        if policy.model.__class__.__name__ == 'GPTNeoXForCausalLM': # Pythia
+            layers = policy.model.gpt_neox.layers
+        else: # GPT-J
+            layers = policy.model.transformer.h
+        
+        num_layers = len(layers)
+        num_unfrozen = int(unfrozen_layers_ratio * num_layers)
+        for layer in layers[:-num_unfrozen]:
+            layer.requires_grad_(False)
 
     num_trainable_params = 0
     num_non_trainable_params = 0
@@ -419,11 +424,12 @@ def main():
     accelerator.print("Loading the training dataset and dataloader from the DataPool.")
     training_dataset = NLFTrainingDataset(
         datapool=data_pool, 
-        num_samples_per_prompt=args['train']['num_samples_per_prompt'],
         tokenizer=tokenizer,
         feedback_prefix="",
-        prompt_prefix="input: ",
-        max_new_tokens=64
+        prompt_prefix=".\n\n",
+        num_samples_per_prompt=args['train']['num_samples_per_prompt'],
+        num_feedback_categories=args['train']['num_feedback_categories'],
+        max_new_tokens=args['train']['max_new_tokens']
     ).dataset['train']
     training_seq_collator = NLFTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
     training_dataloader = DataLoader(

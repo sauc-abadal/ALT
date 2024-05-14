@@ -6,16 +6,17 @@ import spacy
 from typing import Union, List, Dict, Optional
 from copy import deepcopy
 
-from data_pool import QuarkDataPool, NLFDataPool
+from training.data_pool import QuarkDataPool, NLFDataPool
 
 class NLFTrainingDataset():
     def __init__(
         self, 
         datapool: NLFDataPool, 
-        num_samples_per_prompt: int,
         tokenizer: AutoTokenizer,
         feedback_prefix: Optional[str] = "feedback: ",
         prompt_prefix: Optional[str] = "input: ",
+        num_samples_per_prompt: Optional[int]=None,
+        num_feedback_categories: Optional[int]=None,
         max_new_tokens: int=64):
         """
         Initalizes a Dataset for handling sequences with Natural Language feedback tokens prepended before the prompt.
@@ -26,7 +27,10 @@ class NLFTrainingDataset():
         
         self.nlp = spacy.load("en_core_web_sm")
 
-        samples = datapool.get_samples(num_samples_per_prompt=num_samples_per_prompt)
+        samples = datapool.get_samples(
+            num_samples_per_prompt=num_samples_per_prompt,
+            num_feedback_categories=num_feedback_categories)
+        
         data_dict = {
             "prompt": [],
             "generation": [],
@@ -88,7 +92,7 @@ class NLFTrainingDataset():
         prompt = example["prompt"]
         generation = example["generation"]
         feedback = example["feedback"]
-        input_seq = self.feedback_prefix + feedback + " " + self.prompt_prefix + prompt
+        input_seq = self.feedback_prefix + feedback + self.prompt_prefix + prompt
         if self.is_truncated(generation) and self.is_X_tokens(generation, x=self.max_new_tokens):
             # don't append EOS token when generation is incomplete --> don't teach the model to always stop generating after 64 tokens
             output_seq = " " + generation 

@@ -37,12 +37,15 @@ start = (args.split_number) * chunk_size
 end = min((args.split_number + 1) * chunk_size, len(data))
 data = data[start:end]
 
+
+stop_seqs = ["Assistant:", "assistant:", "Human:", "human:"]
 # Define the prompts.
 sampling_params = SamplingParams(
     n=args.num_generations, 
     temperature=args.temperature, 
     top_p=args.top_p, 
-    max_tokens=args.max_new_tokens
+    max_tokens=args.max_new_tokens,
+    stop=stop_seqs
 )
 
 llm = LLM(model=args.model_path, tokenizer=args.tokenizer_path)

@@ -9,6 +9,7 @@ import numpy as np
 from transformers import AutoTokenizer
 import numpy as np
 import matplotlib.pyplot as plt
+
 class NLFDataPool():
     def __init__(self, tokenizer: AutoTokenizer):
         self.datapool = {}
@@ -79,7 +80,9 @@ class NLFDataPool():
         # add data to datapool
         self.add_samples(prompts, all_generations, all_feedbacks)
     
-    def get_samples(self, num_samples_per_prompt: Optional[int] = None) -> List[Dict[str, List[str]]]:
+    def get_samples(self, 
+                    num_samples_per_prompt: Optional[int]=None,
+                    num_feedback_categories: Optional[int]=None) -> List[Dict[str, List[str]]]:
         
         samples = []
         
@@ -99,20 +102,19 @@ class NLFDataPool():
                 
                 indices_used = []
                 num_samples_to_draw = {
-                    "Very helpful and harmless": num_samples_per_prompt // 6,
-                    "Very helpful and harmful": num_samples_per_prompt // 6,
-                    "Helpful and harmless": num_samples_per_prompt // 6,
-                    "Helpful and harmful": num_samples_per_prompt // 6,
-                    "Not helpful and harmless": num_samples_per_prompt // 6,
-                    "Not helpful and harmful": num_samples_per_prompt // 6
+                    "Harmless and very helpful": num_samples_per_prompt // num_feedback_categories,
+                    "Harmless and helpful": num_samples_per_prompt // num_feedback_categories,
+                    "Harmless and not helpful": num_samples_per_prompt // num_feedback_categories,
+                    "Harmful": num_samples_per_prompt // num_feedback_categories
                 }
                 feedback_categories = [
-                    "Helpful and harmless",
-                    "Not helpful and harmless",
+                    "Harmless and very helpful",
+                    "Harmless and helpful",
+                    "Harmless and not helpful",
                     "Harmful"
-                    ]
+                ]
                 
-                still_to_draw = num_samples_per_prompt % 6
+                still_to_draw = num_samples_per_prompt % num_feedback_categories
                 for feedback_category in feedback_categories:
 
                     sublist_indices = [i for i, x in enumerate(feedbacks) if x == feedback_category]
@@ -214,6 +216,7 @@ class NLFDataPool():
             "max_generations": max_generations,
             "min_generations": min_generations
         }
+
 class QuarkDataPool():
     def __init__(self, num_quantiles: int, reward_quantile_tokens: List[str], tokenizer: AutoTokenizer):
         self.datapool = {}

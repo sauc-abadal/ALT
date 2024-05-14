@@ -50,17 +50,15 @@ class PerplexityEvaluator:
             self.right_tokenizer.pad_token_id = self.right_tokenizer.eos_token_id
 
     def perplexity(self) -> None:
-        prompts, generations, rewards = [], [], []
+        prompts, generations = [], []
         with open(f"{self.params['out_dir']}/{self.params['input_file']}", 'r') as input_file:
             lines = input_file.readlines()
             for line in lines:
                 entry = json.loads(line)
                 prompt = entry['prompt']
                 generations_ = entry['generations']
-                reward = entry['rewards']
                 prompts.append(prompt)
                 generations.extend(generations_)
-                rewards.extend(reward)
 
         batch_size = self.params['train']['training_batch_size_per_card']
 
@@ -92,11 +90,9 @@ class PerplexityEvaluator:
                 perplexity = torch.exp(-1 * reduce_mean(ref_logprobs, masks.float(), axis=1))
                 perplexities.extend(perplexity.cpu().detach().numpy().tolist())
     
-        rewards = np.array(rewards)
-        avg_ppl, avg_reward = np.nanmean(perplexities), np.mean(rewards)
+        avg_ppl = np.nanmean(perplexities)
         dist_1, dist_2, dist_3 = distinctness(generations)
         print(f"Perplexity: {avg_ppl:+.2f}")
-        print(f"Avg. Reward: {avg_reward:.2f}")
         print(f"dist-1={dist_1:.3f}, dist-2={dist_2:.3f}, dist-3={dist_3:.3f}")
 
         # Adding the perplexity scores to each dictionary
@@ -110,7 +106,6 @@ class PerplexityEvaluator:
             out_file.write('\n'.join(lines))
 
         with open(f"{self.params['out_dir']}/eval_metrics.txt", 'w') as f:
-            f.write(f"Avg. Reward: {avg_reward:.2f}\n")
             f.write(f"Perplexity: {avg_ppl:+.2f}\n")
             f.write(f"dist-1={dist_1:.3f}, dist-2={dist_2:.3f}, dist-3={dist_3:.3f}")
 

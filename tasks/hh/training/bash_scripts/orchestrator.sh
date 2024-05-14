@@ -2,24 +2,29 @@ config="tasks/hh/training/configs/NLF_HH_config.yaml"
 accelerate_config=/cluster/project/sachan/sauc/nlf/tasks/hh/training/configs/accelerate_config_ds_2gpu_ds_opt_ds_sch_cpu_off.yaml
 
 # to be initialized and saved in this path!
-tokenizer_path="/cluster/work/sachan/NLF/hh_nlf/NLF_HH_tokenizer"
+tokenizer_path="/cluster/work/sachan/NLF/hh_nlf/tokenizer-pythia-2.8b-mitchell-sft_hh_rlhf"
 
 num_generations_train=20
 data_split_train=train
-temperature_train=0.9
+temperature_train=1.0
 top_p_train=0.9
-max_new_tokens_train=64
+max_new_tokens_train=256
 
 num_generations_valid=1
 data_split_valid=valid
-temperature_valid=0.0
-top_p_valid=1.0
-max_new_tokens_valid=64
+temperature_valid=1.0
+top_p_valid=0.9
+max_new_tokens_valid=256
 
 iteration=1
 
-# to be created!
-input_prompts_file_train="/cluster/work/sachan/NLF/hh_nlf/sampled_prompts_iter_${iteration}.json"
+if [ "$iteration" -eq 1 ]; then
+    input_prompts_file_train="/cluster/work/sachan/NLF/hh_nlf/HH_train_prompts.json"
+else
+    input_prompts_file_train="/cluster/work/sachan/NLF/hh_nlf/HH_train_prompts_conditioned.json"
+fi
+
+
 input_prompts_file_valid="/cluster/work/sachan/NLF/hh_nlf/NLF_conditioned_prompts.json"
 
 output_dir="/cluster/work/sachan/NLF/hh_nlf/output_iter_${iteration}/"

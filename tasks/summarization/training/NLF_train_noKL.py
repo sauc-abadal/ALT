@@ -20,9 +20,9 @@ from accelerate.state import AcceleratorState
 from accelerate.utils import DummyOptim, DummyScheduler
 
 from utils import set_seed, ensure_dir, ceil_div, reduce_mean, WANDB_API_KEY, NEGATIVE_INF
-from tasks.summarization.models.policy import Policy
-from training_dataset_and_collator import NLFTrainingDataset, NLFTrainingSequenceCollatorWithPadding
-from data_pool import NLFDataPool
+from models.policy import Policy
+from training.training_dataset_and_collator import NLFTrainingDataset, NLFTrainingSequenceCollatorWithPadding
+from training.data_pool import NLFDataPool
 from state import load_state, save_state
 
 # load parameters

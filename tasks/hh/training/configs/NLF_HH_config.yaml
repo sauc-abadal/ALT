@@ -11,11 +11,11 @@ logging:
 model:
   policy_model:
     input_padding_side: left
-    name_or_path: mnoukhov/pythia-2.8b-sft_hh_rlhf
+    name_or_path: mnoukhov/pythia-2.8b-mitchell-sft_hh_rlhf
   ref_policy:
-    name_or_path: mnoukhov/pythia-2.8b-sft_hh_rlhf
+    name_or_path: mnoukhov/pythia-2.8b-mitchell-sft_hh_rlhf
   tokenizer:
-    name_or_path: mnoukhov/pythia-2.8b-sft_hh_rlhf
+    name_or_path: mnoukhov/pythia-2.8b-mitchell-sft_hh_rlhf
 reward:
   batch_size: 96
   half: true
@@ -30,12 +30,14 @@ train:
   kl_coef: 0.05
   lr: 2e-5
   max_grad_norm: 1.0
-  max_input_length: 1024
+  max_input_length: 512
   sampling_batch_size_per_card: 32
   seed: 42
   total_episodes: 40960
   warmup_ratio: 0.05
   training_batch_size_per_card: 8
-  num_samples_per_prompt: 12
+  num_samples_per_prompt: 10
+  num_feedback_categories: 4
+  max_new_tokens: 256
   unfrozen_layers_ratio: 1.0
   datapool_drop_factor: 1.0

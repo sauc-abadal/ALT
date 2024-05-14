@@ -9,6 +9,7 @@ import numpy as np
 from transformers import AutoTokenizer
 import numpy as np
 import matplotlib.pyplot as plt
+
 class NLFDataPool():
     def __init__(self, tokenizer: AutoTokenizer):
         self.datapool = {}

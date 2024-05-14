@@ -6,7 +6,7 @@ import spacy
 from typing import Union, List, Dict, Optional
 from copy import deepcopy
 
-from data_pool import QuarkDataPool, NLFDataPool
+from training.data_pool import QuarkDataPool, NLFDataPool
 
 class NLFTrainingDataset():
     def __init__(
