@@ -20,10 +20,10 @@ from accelerate.state import AcceleratorState
 from accelerate.utils import DummyOptim, DummyScheduler
 
 from utils import set_seed, ensure_dir, ceil_div, reduce_mean, WANDB_API_KEY, NEGATIVE_INF
-from models.policy import Policy
-from training.training_dataset_and_collator import NLFTrainingDataset, NLFTrainingSequenceCollatorWithPadding
-from training.data_pool import NLFDataPool
-from training.state import load_state, save_state
+from tasks.hh.models.policy import Policy
+from tasks.hh.training.training_dataset_and_collator import NLFTrainingDataset, NLFTrainingSequenceCollatorWithPadding
+from tasks.hh.training.data_pool import NLFDataPool
+from tasks.hh.training.state import load_state, save_state
 
 # load parameters
 parser = argparse.ArgumentParser()
