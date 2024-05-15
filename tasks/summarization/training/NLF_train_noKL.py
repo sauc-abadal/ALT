@@ -420,7 +420,7 @@ def main():
     training_dataset = NLFTrainingDataset(
         datapool=data_pool, 
         tokenizer=tokenizer,
-        feedback_prefix="feedback: ",
+        feedback_prefix="",
         prompt_prefix="input: ",
         num_samples_per_prompt=args['train']['num_samples_per_prompt'],
         num_feedback_categories=args['train']['num_feedback_categories'],
