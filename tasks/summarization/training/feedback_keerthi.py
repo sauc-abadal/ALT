@@ -179,7 +179,6 @@ Use the format: "Score: <score>."
             
             feedbacks = []
             
-            samples[i]["analysis"] = []
             samples[i]["feedbacks"] = []
             samples[i]["scores"] = []
 
@@ -213,7 +212,6 @@ Use the format: "Score: <score>."
                     logger.error(f"Failed to get response for prompt {i} after retries.")
                     feedbacks.append(
                         {
-                            "analysis": None,
                             "feedback": None,
                             "score": None,
                         }
@@ -224,7 +222,6 @@ Use the format: "Score: <score>."
                 feedbacks.append(parsed_feedback)
 
             for f in feedbacks:
-                samples[i]["analysis"].append(f["analysis"])
                 samples[i]["feedbacks"].append(f["feedback"])
                 samples[i]["scores"].append(f["score"])
 

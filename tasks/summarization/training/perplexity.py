@@ -13,7 +13,7 @@ import numpy as np
 from tqdm import tqdm
 
 from utils import distinctness, set_seed, ensure_dir, reduce_mean
-from models.policy import Policy
+from tasks.summarization.models.policy import Policy
 
 # load parameters
 parser = argparse.ArgumentParser()
