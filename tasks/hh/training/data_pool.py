@@ -72,7 +72,6 @@ class NLFDataPool():
                 prompt = entry['prompt']
                 generations = entry['generations']
                 feedbacks = entry['feedbacks']
-                scores = entry['scores']
                 prompts.append(prompt)
                 all_generations.append(generations)
                 all_feedbacks.append(feedbacks)
