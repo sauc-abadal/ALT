@@ -1,7 +1,7 @@
 logging:
   log_interval: 500
   save_interval: 1000
-  run_id: '31145'
+  run_id: '31165'
   run_name: NLF_HH_v0
   save_dir: /cluster/work/sachan/NLF/hh_nlf
   scratch_dir: /cluster/scratch/sabadal/nlf/hh_nlf_v0
