@@ -419,11 +419,12 @@ def main():
     accelerator.print("Loading the training dataset and dataloader from the DataPool.")
     training_dataset = NLFTrainingDataset(
         datapool=data_pool, 
-        num_samples_per_prompt=args['train']['num_samples_per_prompt'],
         tokenizer=tokenizer,
         feedback_prefix="feedback: ",
         prompt_prefix="input: ",
-        max_new_tokens=64
+        num_samples_per_prompt=args['train']['num_samples_per_prompt'],
+        num_feedback_categories=args['train']['num_feedback_categories'],
+        max_new_tokens=args['train']['max_new_tokens']
     ).dataset['train']
     training_seq_collator = NLFTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
     training_dataloader = DataLoader(

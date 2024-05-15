@@ -81,7 +81,8 @@ class NLFDataPool():
     
     def get_samples(self, 
                     num_samples_per_prompt: Optional[int]=None,
-                    num_feedback_categories: Optional[int]=None) -> List[Dict[str, List[str]]]:
+                    num_feedback_categories: Optional[int]=None,
+                    max_tokens: Optional[int]=64) -> List[Dict[str, List[str]]]:
         
         samples = []
         
@@ -136,7 +137,7 @@ class NLFDataPool():
                     # while rejecting generations with len 64 tokens
                     indices_to_keep = []
                     for idx in all_indices:
-                        if gen_lens[idx] < 64:
+                        if gen_lens[idx] < max_tokens:
                             indices_to_keep.append(idx)
                             if len(indices_to_keep) == num_elem_to_keep:
                                 break

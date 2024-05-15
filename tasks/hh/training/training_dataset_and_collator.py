@@ -29,7 +29,8 @@ class NLFTrainingDataset():
 
         samples = datapool.get_samples(
             num_samples_per_prompt=num_samples_per_prompt,
-            num_feedback_categories=num_feedback_categories)
+            num_feedback_categories=num_feedback_categories,
+            max_tokens=max_new_tokens)
         
         data_dict = {
             "prompt": [],

@@ -12,10 +12,11 @@ class NLFTrainingDataset():
     def __init__(
         self, 
         datapool: NLFDataPool, 
-        num_samples_per_prompt: int,
         tokenizer: AutoTokenizer,
         feedback_prefix: Optional[str] = "feedback: ",
         prompt_prefix: Optional[str] = "input: ",
+        num_samples_per_prompt: Optional[int]=None,
+        num_feedback_categories: Optional[int]=None,
         max_new_tokens: int=64):
         """
         Initalizes a Dataset for handling sequences with Natural Language feedback tokens prepended before the prompt.
@@ -26,7 +27,9 @@ class NLFTrainingDataset():
         
         self.nlp = spacy.load("en_core_web_sm")
 
-        samples = datapool.get_samples(num_samples_per_prompt=num_samples_per_prompt)
+        samples = datapool.get_samples(num_samples_per_prompt=num_samples_per_prompt,
+                                       num_feedback_categories=num_feedback_categories,
+                                       max_tokens=max_new_tokens)
         data_dict = {
             "prompt": [],
             "generation": [],

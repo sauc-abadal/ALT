@@ -84,7 +84,10 @@ class NLFDataPool():
         # add data to datapool
         self.add_samples(prompts, all_generations, all_feedbacks, all_scores)
     
-    def get_samples(self, num_samples_per_prompt: Optional[int] = None) -> List[Dict[str, List[str]]]:
+    def get_samples(self,
+                    num_samples_per_prompt: Optional[int]=None,
+                    num_feedback_categories: Optional[int]=None,
+                    max_tokens: Optional[int]=64) -> List[Dict[str, List[str]]]:
         
         samples = []
         
@@ -105,15 +108,13 @@ class NLFDataPool():
                 sampled_scores = []
                 
                 indices_used = []
-                num_samples_to_draw = {
-                    0: num_samples_per_prompt // 4,
-                    1: num_samples_per_prompt // 4,
-                    2: num_samples_per_prompt // 4,
-                    3: num_samples_per_prompt // 4
-                }
+                num_samples_to_draw = {}
+                for score_value in range(num_feedback_categories):
+                    num_samples_to_draw[score_value] = num_samples_per_prompt // num_feedback_categories
                 
-                still_to_draw = num_samples_per_prompt % 4
-                for score_value in [0, 1, 2, 3]:
+                still_to_draw = num_samples_per_prompt % num_feedback_categories
+
+                for score_value in range(num_feedback_categories):
                     sublist_indices = [i for i, x in enumerate(scores) if int(x) == score_value]
                     
                     sublist_generations = [generations[i] for i in sublist_indices]
@@ -135,7 +136,7 @@ class NLFDataPool():
                     # while rejecting generations with len 64 tokens
                     indices_to_keep = []
                     for idx in all_indices:
-                        if gen_lens[idx] < 64:
+                        if gen_lens[idx] < max_tokens:
                             indices_to_keep.append(idx)
                             if len(indices_to_keep) == num_elem_to_keep:
                                 break
