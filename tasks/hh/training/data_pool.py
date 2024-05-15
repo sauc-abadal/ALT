@@ -117,7 +117,7 @@ class NLFDataPool():
                 still_to_draw = num_samples_per_prompt % num_feedback_categories
                 for feedback_category in feedback_categories:
 
-                    sublist_indices = [i for i, x in enumerate(feedbacks) if x == feedback_category]
+                    sublist_indices = [i for i, x in enumerate(feedbacks) if x.lower() == feedback_category.lower()]
                     
                     sublist_generations = [generations[i] for i in sublist_indices]
                     sublist_feedbacks = [feedbacks[i] for i in sublist_indices]
