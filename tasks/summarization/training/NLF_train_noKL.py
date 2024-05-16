@@ -202,6 +202,15 @@ def main():
         seed=args['train']['seed'] + args["iteration"], 
         cuda_deterministic=args['train']['cuda_deterministic'])
     
+    feedback_categories = [
+        "Very precise and concise",
+        "Very precise but not concise",
+        "Precise and concise",
+        "Precise but not concise",
+        "Not precise but concise",
+        "Not precise nor concise",
+    ]
+
     accelerator = Accelerator(log_with="wandb", step_scheduler_with_optimizer=False)
     accelerator.print("############### NLF_train_noKL.py ###############")
     accelerator.print(f"{AcceleratorState()}")
@@ -421,12 +430,15 @@ def main():
         datapool=data_pool, 
         tokenizer=tokenizer,
         feedback_prefix="",
-        prompt_prefix="input: ",
+        prompt_prefix=". input: ",
         num_samples_per_prompt=args['train']['num_samples_per_prompt'],
         num_feedback_categories=args['train']['num_feedback_categories'],
-        max_new_tokens=args['train']['max_new_tokens']
+        max_new_tokens=args['train']['max_new_tokens'],
+        feedback_categories=feedback_categories
     ).dataset['train']
+    
     training_seq_collator = NLFTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
+    
     training_dataloader = DataLoader(
         dataset=training_dataset,
         batch_size=args['train']['training_batch_size_per_card'],

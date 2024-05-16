@@ -67,36 +67,6 @@ def exponential_backoff(retries=5, delay=1):
             delay *= 2
     logger.error("Max retries exceeded, operation failed.")
 
-def parse_feedback(feedback_sentence: str) -> Dict[str, Union[float, str]]:
-    
-    feedback_sentence = feedback_sentence.strip()
-
-    # Define regular expressions to extract the desired information
-    analysis_regex = r"Analysis:(.*?)(?=Feedback|Score)"
-    feedback_regex = r"Feedback:(.*?)(?=Score)"
-    score_regex = r"Score: ([\d.]+)"
-
-    # Extract analysis
-    analysis_match = re.search(analysis_regex, feedback_sentence, re.DOTALL)
-    analysis = analysis_match.group(1).strip() if analysis_match else None
-
-    # Extract feedback
-    feedback_match = re.search(feedback_regex, feedback_sentence, re.DOTALL)
-    feedback = feedback_match.group(1).strip() if feedback_match else None
-
-    # Extract score
-    score_match = re.search(score_regex, feedback_sentence)
-    score = float(score_match.group(1)) if score_match else None
-    
-    if (analysis is None) or (feedback is None) or (score is None):
-        return None
-    
-    return {
-        "analysis": analysis,
-        "feedback": feedback,
-        "score": score
-    }
-
 def main():
     sampling_file = args['input_sampling_file']
     print(f"Reading sampled data from sampling_file: {sampling_file}")
@@ -128,44 +98,19 @@ def main():
         sample["prompt"] = remove_conditioning_from_str(sample["prompt"].strip(), nlf=args["NLF"])  
 
     prompt_template = '''
-A good summary is a shorter piece of text that has the \
-essence of the original. It tries to accomplish the same \
-purpose and conveys the key information from the original \
-post. Below we define three evaluation axes for summary \
-quality: coherence, accuracy, and coverage. \
-__ \
-- A summary is coherent if it’s easy \
-to understand when read on its own and free of English errors. \
-A summary is not coherent if it’s difficult to understand \
-what the summary is trying to say. \
-__ \
-- Accuracy: This axis answers the question “does the factual \
-information in the summary accurately match the post?” \
-A summary is accuracte if it doesn't contain made up facts \
-and the presented information is grounded in the original post. \
-__ \
-- Coverage: This axis answers the question “how well does \
-the summary cover the important information in the post?” \
-Be mindful that a summary is a shorter piece of the original post \
-and that there is always a tradeoff between coverage and conciness. \
-A summary has good coverage if it mentions the main information \
-from the post while being as concise as possible. \
-__
-POST: {} \
-__
-SUMMARY: {} \
-__
-You are an expert at summarization. After examining the post and the summary: \
-__ \
-1. Output an analysis of what you thought of the summary based on coherence, accuracy, and coverage using the format: "Analysis: <analysis>". \
-__ \
-2. Output a very short single sentence of 10 words or less only commenting on the accuracy, coverage and coherence of the summary. \
-Include in the sentence not only the deficiencies in some of the evaluation axes but also the strenghts. \
-Use the format: "Feedback: <feedback>". \
-__ \
-3. Output a overall summary score out of 3 (being 0 the worst and 3 the best). Add 1 point if the \
-summary is coherent, 1 point if it's accurate, and another 1 point if it has great coverage. \
-Use the format: "Score: <score>."
+A good summary is a shorter piece of text that has the essence of the original. It tries to accomplish the same purpose and conveys the key information from the original post. You are an expert summary rater tasked to assess a summary written by a user to a given post. Use your best judgment to evaluate the summary quality and output a grade by picking one of the following grades: ["Very precise and concise", "Very precise but not concise", "Precise and concise", "Precise but not concise", "Not precise but concise", "Not precise nor concise"].
+
+<Post begins>
+SUBREDDIT: r/AskReddit\nTITLE: A morally dubious question about going back to college.\nPOST: Hey everybody, throwaway account.\n\nI'll try to keep it short..\n\nI made a mistake. A big mistake. I majored in a field I'm not cut out for. I can't handle the work, the environment, and the lifestyle associated with it (it's finance). I'm extremely depressed and defeated.\n\nI have a chance to go back to school. I know exactly what I want to do (Dietitian) and know it will make me happy. \n\nBut, when I left college, I left with a 2.2 GPA. \n\nI've been rejected from every college I've applied to since then, on the basis of my previous GPA being too low. \n\nI understand the usual options: ace prerequisite courses, write an amazing application letter, work in a related field. I understand them all. So far they haven't worked.\n\n**So my question is this:**\n\nCould I lie on my application, saying I never went to college... then retaking all of the undergrad courses and getting a second BA?\n\n,,\n\nThe risks are there: Do I get kicked out mid-semester if they find out? Is it a legal issue if I lie on my application?\n\nI realize this is wrong. But I do not want to be the man that stayed in a career he hate for 60 years because he didn't try hard enough to get out. \n\nI've gotten to the point where I am ready to lie. Should I do this? Can I do this? Am I crazy?
+<Post ends>
+
+<Summary begins>
+SUMMARY: I made a mistake. A big mistake. I majored in a field I'm not cut out for. I can't handle the work, the environment, and the lifestyle associated with it (it's finance). I'm extremely depressed and defeated.
+<Summary ends>
+
+You are an expert at summarization. After thoroughly examining the post and the summary:
+1. Output an analysis of what you think about the summary. Expected output "Analysis: <analysis>".
+2. Output the grade by picking one of the specified grades. Expected output "Grade <grade>".
 '''.strip()
     
     # Initialize OpenAI client
@@ -180,7 +125,6 @@ Use the format: "Score: <score>."
             feedbacks = []
             
             samples[i]["feedbacks"] = []
-            samples[i]["scores"] = []
 
             for generation in data["generations"]:
                 generation = generation.strip()
@@ -195,12 +139,11 @@ Use the format: "Score: <score>."
                             temperature=0.00,
                             messages=[
                                 {"role": "system", "content": "You are an expert summary rater tasked to assess a summary written by a user to a given post"},
-                                {"role": "user", "content": prompt_template.format(prompt, generation).replace("__", "\n")}
+                                {"role": "user", "content": prompt_template.format(prompt, generation)}
                             ]
                         )
 
-                        tmp_feedback = response.choices[0].message.content
-                        parsed_feedback = parse_feedback(tmp_feedback)
+                        parsed_feedback = response.choices[0].message.content
                         if parsed_feedback:
                             not_responded_yet = False
                             break  # Exit the retry loop if successful and correctly parsed
@@ -223,7 +166,6 @@ Use the format: "Score: <score>."
 
             for f in feedbacks:
                 samples[i]["feedbacks"].append(f["feedback"])
-                samples[i]["scores"].append(f["score"])
 
             ofile.write(json.dumps(samples[i]) + '\n')
 

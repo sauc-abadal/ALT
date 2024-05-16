@@ -14,10 +14,11 @@ class NLFTrainingDataset():
         datapool: NLFDataPool, 
         tokenizer: AutoTokenizer,
         feedback_prefix: Optional[str] = "feedback: ",
-        prompt_prefix: Optional[str] = "input: ",
+        prompt_prefix: Optional[str] = " input: ",
         num_samples_per_prompt: Optional[int]=None,
         num_feedback_categories: Optional[int]=None,
-        max_new_tokens: int=64):
+        max_new_tokens: Optional[int]=64,
+        feedback_categories: Optional[List[str]]=None):
         """
         Initalizes a Dataset for handling sequences with Natural Language feedback tokens prepended before the prompt.
 
@@ -29,7 +30,8 @@ class NLFTrainingDataset():
 
         samples = datapool.get_samples(num_samples_per_prompt=num_samples_per_prompt,
                                        num_feedback_categories=num_feedback_categories,
-                                       max_tokens=max_new_tokens)
+                                       max_tokens=max_new_tokens,
+                                       feedback_categories=feedback_categories)
         data_dict = {
             "prompt": [],
             "generation": [],
@@ -91,7 +93,7 @@ class NLFTrainingDataset():
         prompt = example["prompt"]
         generation = example["generation"]
         feedback = example["feedback"]
-        input_seq = self.feedback_prefix + feedback + " " + self.prompt_prefix + prompt
+        input_seq = self.feedback_prefix + feedback + self.prompt_prefix + prompt
         if self.is_truncated(generation) and self.is_X_tokens(generation, x=self.max_new_tokens):
             # don't append EOS token when generation is incomplete --> don't teach the model to always stop generating after 64 tokens
             output_seq = " " + generation 

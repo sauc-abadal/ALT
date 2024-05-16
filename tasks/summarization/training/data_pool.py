@@ -43,23 +43,20 @@ class NLFDataPool():
                 self.datapool[prompt]["generations"] = generations
                 self.datapool[prompt]["feedbacks"] = feedbacks
         
-    def add_samples(self, prompts: List[str], generations: List[List[str]], feedbacks: List[List[str]], scores: List[List[str]]):
+    def add_samples(self, prompts: List[str], generations: List[List[str]], feedbacks: List[List[str]]):
         for i, prompt in enumerate(prompts):
             
             g = [gen for gen, feed in zip(generations[i], feedbacks[i]) if feed is not None]
             f = [feed for feed in feedbacks[i] if feed is not None]
-            s = [sc for sc, feed in zip(scores[i], feedbacks[i]) if feed is not None]
 
             if prompt not in self.datapool:
                 self.datapool[prompt] = {
                     "generations": g,
                     "feedbacks": f,
-                    "scores": s
                 }
             else:
                 self.datapool[prompt]["generations"].extend(g)
                 self.datapool[prompt]["feedbacks"].extend(f)
-                self.datapool[prompt]["scores"].extend(s)
     
     def update_datapool(self, sampling_file: Union[str, os.PathLike], drop_factor: float = 1.0):
         
@@ -67,7 +64,7 @@ class NLFDataPool():
         self.flush_samples(drop_factor=drop_factor)
         
         # get newly sampled data
-        prompts, all_generations, all_feedbacks, all_scores = [], [], [], []
+        prompts, all_generations, all_feedbacks = [], [], []
         with open(sampling_file, 'r') as f:
             lines = f.readlines()
             for line in lines:
@@ -75,55 +72,51 @@ class NLFDataPool():
                 prompt = entry['prompt']
                 generations = entry['generations']
                 feedbacks = entry['feedbacks']
-                scores = entry['scores']
                 prompts.append(prompt)
                 all_generations.append(generations)
                 all_feedbacks.append(feedbacks)
-                all_scores.append(scores)
         
         # add data to datapool
-        self.add_samples(prompts, all_generations, all_feedbacks, all_scores)
+        self.add_samples(prompts, all_generations, all_feedbacks)
     
-    def get_samples(self,
+    def get_samples(self, 
                     num_samples_per_prompt: Optional[int]=None,
                     num_feedback_categories: Optional[int]=None,
-                    max_tokens: Optional[int]=64) -> List[Dict[str, List[str]]]:
+                    max_tokens: Optional[int]=64,
+                    feedback_categories: Optional[List[str]]=None) -> List[Dict[str, List[str]]]:
         
         samples = []
         
         for prompt in self.datapool.keys():
             generations = self.datapool[prompt]["generations"]
             feedbacks = self.datapool[prompt]["feedbacks"]
-            scores = self.datapool[prompt]["scores"]
             
             if not num_samples_per_prompt:
             # return all generations for each prompt
                 sampled_generations = generations
                 sampled_feedbacks = feedbacks
-                sampled_scores = scores
+
             else:
             # subsample the number of generations for each prompt  
                 sampled_generations = []
                 sampled_feedbacks = []
-                sampled_scores = []
                 
                 indices_used = []
                 num_samples_to_draw = {}
-                for score_value in range(num_feedback_categories):
-                    num_samples_to_draw[score_value] = num_samples_per_prompt // num_feedback_categories
-                
+                for feedback_category in feedback_categories:
+                    num_samples_to_draw[feedback_category] = num_samples_per_prompt // num_feedback_categories  
                 still_to_draw = num_samples_per_prompt % num_feedback_categories
 
-                for score_value in range(num_feedback_categories):
-                    sublist_indices = [i for i, x in enumerate(scores) if int(x) == score_value]
+                for feedback_category in feedback_categories:
+
+                    sublist_indices = [i for i, x in enumerate(feedbacks) if x.lower() == feedback_category.lower()]
                     
                     sublist_generations = [generations[i] for i in sublist_indices]
                     sublist_feedbacks = [feedbacks[i] for i in sublist_indices]
-                    sublist_scores = [scores[i] for i in sublist_indices]
                  
-                    num_elem_to_keep = min(num_samples_to_draw[score_value], len(sublist_generations))
+                    num_elem_to_keep = min(num_samples_to_draw[feedback_category], len(sublist_generations))
                     if num_elem_to_keep == 0:
-                        still_to_draw += num_samples_to_draw[score_value]
+                        still_to_draw += num_samples_to_draw[feedback_category]
                         continue
                         
                     gen_lens = [len(gen) for gen in self.tokenizer(sublist_generations)["input_ids"]]
@@ -133,16 +126,16 @@ class NLFDataPool():
                     random.shuffle(all_indices)
 
                     # rejection sampling to get 'num_elements_to_keep' generations
-                    # while rejecting generations with len 64 tokens
+                    # while rejecting generations with len 'max_tokens' tokens
                     indices_to_keep = []
                     for idx in all_indices:
-                        if gen_lens[idx] < max_tokens:
+                        if gen_lens[idx] < max_tokens: # i.e., if not truncated mid-sentence
                             indices_to_keep.append(idx)
                             if len(indices_to_keep) == num_elem_to_keep:
                                 break
 
                     # if we didn't manage to get the 'num_elem_to_keep' generations, 
-                    # fill with 64-tokens generations
+                    # fill with 'max_tokens'-tokens generations
                     if len(indices_to_keep) != num_elem_to_keep:
                         for idx in all_indices:
                             if idx not in indices_to_keep:
@@ -154,20 +147,17 @@ class NLFDataPool():
                                         
                     sublist_generations = [sublist_generations[i] for i in indices_to_keep]
                     sublist_feedbacks = [sublist_feedbacks[i] for i in indices_to_keep]
-                    sublist_scores = [sublist_scores[i] for i in indices_to_keep]
                                         
                     sampled_generations.extend(sublist_generations)
                     sampled_feedbacks.extend(sublist_feedbacks)
-                    sampled_scores.extend(sublist_scores)
                     
-                    still_to_draw += num_samples_to_draw[score_value] - len(sublist_generations)
+                    still_to_draw += num_samples_to_draw[feedback_category] - len(sublist_generations)
                                         
             if still_to_draw > 0:
-                for idx, (g, f, s) in enumerate(zip(generations, feedbacks, scores)):
+                for idx, (g, f) in enumerate(zip(generations, feedbacks)):
                     if idx not in indices_used:
                         sampled_generations.append(g)
                         sampled_feedbacks.append(f)
-                        sampled_scores.append(s)
                         still_to_draw -= 1
                         if still_to_draw == 0:
                             break
@@ -176,7 +166,6 @@ class NLFDataPool():
                 "prompt": deepcopy(prompt),
                 "generations": deepcopy(sampled_generations),
                 "feedbacks": deepcopy(sampled_feedbacks),
-                "scores": deepcopy(sampled_scores)
             }
             samples.append(return_dict)
             
