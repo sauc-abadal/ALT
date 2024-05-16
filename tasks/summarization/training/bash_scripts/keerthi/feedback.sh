@@ -20,7 +20,7 @@ save_dir_path="/cluster/work/sachan/NLF/nlf"
 output_dir="${save_dir_path}/output_iter_${iteration}/"
 input_sampling_file_train="${save_dir_path}/output_iter_${iteration}/NLF_sampling_data_train_split_iter_${iteration}.json"
 file_prefix_train=NLF_sampling_data_train_split_iter_${iteration}
-num_generations_train=20
+num_generations_train=48
 
 ######## SCRIPT LAUNCHING ########
 

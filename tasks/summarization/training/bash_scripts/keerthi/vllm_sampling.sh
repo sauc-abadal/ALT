@@ -27,7 +27,7 @@ input_sampling_file_train="${save_dir_path}/output_iter_${iteration}/NLF_samplin
 
 tokenizer_path="${save_dir_path}/NLF_TLDR_tokenizer"
 
-num_generations_train=20
+num_generations_train=48
 data_split_train=train
 temperature_train=0.9
 top_p_train=0.9
