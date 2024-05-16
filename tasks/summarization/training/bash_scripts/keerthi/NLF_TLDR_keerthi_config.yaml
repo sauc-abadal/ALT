@@ -23,11 +23,11 @@ train:
   max_grad_norm: 1.0
   max_input_length: 1024
   seed: 42
-  total_episodes: 40960
+  total_episodes: 49152
   warmup_ratio: 0.05
   training_batch_size_per_card: 8
-  num_samples_per_prompt: 10
-  num_feedback_categories: 4
+  num_samples_per_prompt: 12
+  num_feedback_categories: 6
   max_new_tokens: 64
   unfrozen_layers_ratio: 0.3
   datapool_drop_factor: 1.0
