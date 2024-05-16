@@ -11,7 +11,7 @@
 #SBATCH --open-mode=append
 #SBATCH --mail-type=END
 
-source /cluster/project/sachan/sauc/anaconda3/bin/activate nlf_gptj
+source /cluster/project/sachan/sauc/anaconda3/bin/activate sample
 
 echo "--config: $1"
 echo "--output_dir: $2"
