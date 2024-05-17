@@ -16,7 +16,7 @@ temperature_valid=1.0
 top_p_valid=0.9
 max_new_tokens_valid=256
 
-iteration=3
+iteration=4
 
 if [ "$iteration" -eq 1 ]; then
     og_input_prompts_file="/cluster/work/sachan/NLF/hh_nlf/HH_train_prompts.json"
