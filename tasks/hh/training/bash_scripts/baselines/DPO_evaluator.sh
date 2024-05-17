@@ -1,7 +1,7 @@
 config="tasks/hh/training/configs/NLF_HH_config.yaml"
 
 # to be initialized and saved in this path!
-tokenizer_path="/cluster/work/sachan/NLF/hh_nlf/tokenizer-pythia-2.8b-mitchell-sft_hh_rlhf"
+tokenizer_path="lomahony/eleuther-pythia2.8b-hh-dpo"
 
 num_generations_valid=1
 data_split_valid=test_1000subset
@@ -16,7 +16,7 @@ output_dir="/cluster/work/sachan/NLF/hh_nlf/DPO/"
 input_sampling_file_valid="/cluster/work/sachan/NLF/hh_nlf/DPO/DPO_sampling_data_test_1000subset.json"
 file_prefix_valid="DPO_sampling_data_test_1000subset"
 
-model_path="mnoukhov/pythia-2.8b-mitchell-dpo_hh_rlhf"
+model_path="lomahony/eleuther-pythia2.8b-hh-dpo"
 
 # 1. ---------------- SAMPLING (valid) ----------------
 # Submit SLURM SAMPLE jobs (no dependency) and capture job IDs
