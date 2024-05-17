@@ -349,6 +349,30 @@ def main():
     accelerator.wait_for_everyone()
 
     ################################################################
+    # --------------------- Dataset / Dataloader ----------------- #
+    ################################################################
+
+    accelerator.print("Loading the training dataset and dataloader from the DataPool.")
+    training_dataset = NLFTrainingDataset(
+        datapool=data_pool, 
+        tokenizer=tokenizer,
+        feedback_prefix="",
+        prompt_prefix=".\n\n",
+        num_samples_per_prompt=args['train']['num_samples_per_prompt'],
+        num_feedback_categories=args['train']['num_feedback_categories'],
+        max_new_tokens=args['train']['max_new_tokens']
+    ).dataset['train']
+    training_seq_collator = NLFTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
+    training_dataloader = DataLoader(
+        dataset=training_dataset,
+        batch_size=args['train']['training_batch_size_per_card'],
+        shuffle=True,
+        drop_last=True,
+        collate_fn=training_seq_collator
+    )
+    accelerator.print("Dataset and Dataloader correctly initialized!")
+
+    ################################################################
     # ------------ Prepare Optimizer and Schedulers -------------- #
     ################################################################
 
@@ -379,7 +403,10 @@ def main():
 
     # Initialize new Optimizer and Scheduler
     global_batch_size = args['train']['training_batch_size_per_card'] * num_gpus
-    total_steps = ceil_div(args['train']['total_episodes'], global_batch_size) # total episodes per iteration = 2048*num_samples_per_prompt*num_epochs = 2048*10*2 = 40960
+
+    num_samples = len(training_dataset)
+    total_episodes = num_samples * args['train']['num_epochs']
+    total_steps = ceil_div(total_episodes, global_batch_size) # total episodes per iteration = 2048*num_samples_per_prompt*num_epochs = 2048*10*2 = 40960
     warmup_steps = total_steps * args['train']['warmup_ratio']
     if not args['ds_optimizer']:
         accelerator.print("Using a PyTorch optimizer!")
@@ -416,30 +443,6 @@ def main():
             num_warmup_steps=warmup_steps,
             num_training_steps=total_steps
         )
-
-    ################################################################
-    # --------------------- Dataset / Dataloader ----------------- #
-    ################################################################
-
-    accelerator.print("Loading the training dataset and dataloader from the DataPool.")
-    training_dataset = NLFTrainingDataset(
-        datapool=data_pool, 
-        tokenizer=tokenizer,
-        feedback_prefix="",
-        prompt_prefix=".\n\n",
-        num_samples_per_prompt=args['train']['num_samples_per_prompt'],
-        num_feedback_categories=args['train']['num_feedback_categories'],
-        max_new_tokens=args['train']['max_new_tokens']
-    ).dataset['train']
-    training_seq_collator = NLFTrainingSequenceCollatorWithPadding(tokenizer=policy.tokenizer)
-    training_dataloader = DataLoader(
-        dataset=training_dataset,
-        batch_size=args['train']['training_batch_size_per_card'],
-        shuffle=True,
-        drop_last=True,
-        collate_fn=training_seq_collator
-    )
-    accelerator.print("Dataset and Dataloader correctly initialized!")
 
     ################################################################
     # ---------------------- Set up Accelerator ------------------ #
