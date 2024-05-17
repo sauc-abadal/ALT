@@ -114,7 +114,7 @@ class NLFDataPool():
                     "Harmful"
                 ]
                 
-                still_to_draw = num_samples_per_prompt % num_feedback_categories
+                # still_to_draw = num_samples_per_prompt % num_feedback_categories
                 for feedback_category in feedback_categories:
 
                     sublist_indices = [i for i, x in enumerate(feedbacks) if x.lower() == feedback_category.lower()]
@@ -124,7 +124,7 @@ class NLFDataPool():
                  
                     num_elem_to_keep = min(num_samples_to_draw[feedback_category], len(sublist_generations))
                     if num_elem_to_keep == 0:
-                        still_to_draw += num_samples_to_draw[feedback_category]
+                        # still_to_draw += num_samples_to_draw[feedback_category]
                         continue
                         
                     gen_lens = [len(gen) for gen in self.tokenizer(sublist_generations)["input_ids"]]
@@ -159,16 +159,16 @@ class NLFDataPool():
                     sampled_generations.extend(sublist_generations)
                     sampled_feedbacks.extend(sublist_feedbacks)
                     
-                    still_to_draw += num_samples_to_draw[feedback_category] - len(sublist_generations)
+                    # still_to_draw += num_samples_to_draw[feedback_category] - len(sublist_generations)
                                         
-            if still_to_draw > 0:
-                for idx, (g, f) in enumerate(zip(generations, feedbacks)):
-                    if idx not in indices_used:
-                        sampled_generations.append(g)
-                        sampled_feedbacks.append(f)
-                        still_to_draw -= 1
-                        if still_to_draw == 0:
-                            break
+            # if still_to_draw > 0:
+            #     for idx, (g, f) in enumerate(zip(generations, feedbacks)):
+            #         if idx not in indices_used:
+            #             sampled_generations.append(g)
+            #             sampled_feedbacks.append(f)
+            #             still_to_draw -= 1
+            #             if still_to_draw == 0:
+            #                 break
                             
             return_dict = {
                 "prompt": deepcopy(prompt),
