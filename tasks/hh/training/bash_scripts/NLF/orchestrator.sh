@@ -16,7 +16,7 @@ temperature_valid=1.0
 top_p_valid=0.9
 max_new_tokens_valid=256
 
-iteration=12
+iteration=13
 
 if [ "$iteration" -eq 1 ]; then
     og_input_prompts_file="/cluster/work/sachan/NLF/hh_nlf/HH_train_prompts.json"
@@ -42,7 +42,7 @@ else
     model_path="/cluster/work/sachan/NLF/hh_nlf/model/iter_$((iteration-1))/model_ckp_$((iteration-1))"
 fi
 
-dep=59344487
+dep=59360658
 
 # 1. ---------------- SAMPLING (train) ----------------
 # Submit SLURM SAMPLE jobs (no dependency) and capture job IDs
