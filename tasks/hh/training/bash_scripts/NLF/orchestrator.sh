@@ -16,7 +16,7 @@ temperature_valid=1.0
 top_p_valid=0.9
 max_new_tokens_valid=256
 
-iteration=15
+iteration=16
 
 if [ "$iteration" -eq 1 ]; then
     og_input_prompts_file="/cluster/work/sachan/NLF/hh_nlf/HH_train_prompts.json"
@@ -42,18 +42,16 @@ else
     model_path="/cluster/work/sachan/NLF/hh_nlf/model/iter_$((iteration-1))/model_ckp_$((iteration-1))"
 fi
 
-dep=59391124
-
 # 1. ---------------- SAMPLING (train) ----------------
 # Submit SLURM SAMPLE jobs (no dependency) and capture job IDs
-sample_t1=$(sbatch --dependency=afterok:$dep tasks/hh/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 0 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
-sample_t2=$(sbatch --dependency=afterok:$dep tasks/hh/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 1 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
-sample_t3=$(sbatch --dependency=afterok:$dep tasks/hh/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 2 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
-sample_t4=$(sbatch --dependency=afterok:$dep tasks/hh/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 3 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
-sample_t5=$(sbatch --dependency=afterok:$dep tasks/hh/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 4 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
-sample_t6=$(sbatch --dependency=afterok:$dep tasks/hh/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 5 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
-sample_t7=$(sbatch --dependency=afterok:$dep tasks/hh/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 6 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
-sample_t8=$(sbatch --dependency=afterok:$dep tasks/hh/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 7 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
+sample_t1=$(sbatch tasks/hh/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 0 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
+sample_t2=$(sbatch tasks/hh/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 1 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
+sample_t3=$(sbatch tasks/hh/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 2 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
+sample_t4=$(sbatch tasks/hh/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 3 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
+sample_t5=$(sbatch tasks/hh/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 4 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
+sample_t6=$(sbatch tasks/hh/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 5 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
+sample_t7=$(sbatch tasks/hh/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 6 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
+sample_t8=$(sbatch tasks/hh/training/bash_scripts/NLF/NLF_vllm_sampling_start_run.sh "$input_prompts_file_train" "$output_dir" 7 8 "$model_path" "$tokenizer_path" "$data_split_train" $num_generations_train $temperature_train $top_p_train $max_new_tokens_train | awk '{print $4}')
 
 # concatenate 8 sampled files (dependency on 'sample_t0..7') and capture job ID
 sample_t=$(sbatch --dependency=afterok:$sample_t1:$sample_t2:$sample_t3:$sample_t4:$sample_t5:$sample_t6:$sample_t7:$sample_t8 tasks/summarization/training/bash_scripts/sbatch_concatenate_jsonl.sh \
