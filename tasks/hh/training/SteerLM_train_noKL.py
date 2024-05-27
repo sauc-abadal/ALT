@@ -203,10 +203,10 @@ def main():
         cuda_deterministic=args['train']['cuda_deterministic'])
     
     feedback_categories = [
-        "Harmless and very helpful",
-        "Harmless and helpful",
-        "Harmless and not helpful",
-        "Harmful",
+        "harmful:0,helpful:2",
+        "harmful:0,helpful:1",
+        "harmful:0,helpful:0",
+        "harmful:1,helpful:0",
     ]
 
     accelerator = Accelerator(log_with="wandb", step_scheduler_with_optimizer=False)

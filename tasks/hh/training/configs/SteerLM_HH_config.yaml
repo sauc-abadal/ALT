@@ -1,0 +1,43 @@
+logging:
+  log_interval: 500
+  save_interval: 1000
+  run_id: '31665'
+  run_name: SteerLM_HH_v0
+  save_dir: /cluster/work/sachan/NLF/hh_SteerLM
+  scratch_dir: /cluster/scratch/sabadal/nlf/hh_SteerLM_v0
+  wandb_entity: sauc-ms-thesis
+  wandb_log: true
+  wandb_project: nlf
+model:
+  policy_model:
+    input_padding_side: left
+    name_or_path: mnoukhov/pythia-2.8b-mitchell-sft_hh_rlhf
+  ref_policy:
+    name_or_path: mnoukhov/pythia-2.8b-mitchell-sft_hh_rlhf
+  tokenizer:
+    name_or_path: mnoukhov/pythia-2.8b-mitchell-sft_hh_rlhf
+reward:
+  batch_size: 96
+  half: true
+  load_state_dict: true
+  max_length: 550
+  name_or_path: CarperAI/openai_summarize_tldr_sft
+  state_dict_path: /cluster/work/sachan/sauc/summarize_from_feedback/reward_model/rm_checkpoint/pytorch_model.bin
+train:
+  clip_grad: false
+  cuda_deterministic: true
+  entropy_coef: 0.06
+  kl_coef: 0.05
+  lr: 2e-5
+  max_grad_norm: 1.0
+  max_input_length: 512
+  sampling_batch_size_per_card: 32
+  seed: 42
+  num_epochs: 2
+  warmup_ratio: 0.05
+  training_batch_size_per_card: 32
+  num_samples_per_prompt: 10
+  num_feedback_categories: 4
+  max_new_tokens: 256
+  unfrozen_layers_ratio: 1.0
+  datapool_drop_factor: 1.0

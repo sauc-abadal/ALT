@@ -17,7 +17,8 @@ class NLFTrainingDataset():
         prompt_prefix: Optional[str] = "input: ",
         num_samples_per_prompt: Optional[int]=None,
         num_feedback_categories: Optional[int]=None,
-        max_new_tokens: int=64):
+        max_new_tokens: int=64,
+        feedback_categories: Optional[List[str]]=None):
         """
         Initalizes a Dataset for handling sequences with Natural Language feedback tokens prepended before the prompt.
 
@@ -30,7 +31,8 @@ class NLFTrainingDataset():
         samples = datapool.get_samples(
             num_samples_per_prompt=num_samples_per_prompt,
             num_feedback_categories=num_feedback_categories,
-            max_tokens=max_new_tokens)
+            max_tokens=max_new_tokens,
+            feedback_categories=feedback_categories)
         
         data_dict = {
             "prompt": [],

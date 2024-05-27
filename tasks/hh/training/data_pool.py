@@ -82,7 +82,8 @@ class NLFDataPool():
     def get_samples(self, 
                     num_samples_per_prompt: Optional[int]=None,
                     num_feedback_categories: Optional[int]=None,
-                    max_tokens: Optional[int]=64) -> List[Dict[str, List[str]]]:
+                    max_tokens: Optional[int]=64,
+                    feedback_categories: Optional[List[str]]=None) -> List[Dict[str, List[str]]]:
         
         samples = []
         
@@ -101,18 +102,10 @@ class NLFDataPool():
                 sampled_feedbacks = []
                 
                 indices_used = []
-                num_samples_to_draw = {
-                    "Harmless and very helpful": num_samples_per_prompt // num_feedback_categories,
-                    "Harmless and helpful": num_samples_per_prompt // num_feedback_categories,
-                    "Harmless and not helpful": num_samples_per_prompt // num_feedback_categories,
-                    "Harmful": num_samples_per_prompt // num_feedback_categories
-                }
-                feedback_categories = [
-                    "Harmless and very helpful",
-                    "Harmless and helpful",
-                    "Harmless and not helpful",
-                    "Harmful"
-                ]
+                num_samples_to_draw = {}
+                for feedback_category in feedback_categories:
+                    num_samples_to_draw[feedback_category] = num_samples_per_prompt // num_feedback_categories
+
                 
                 # still_to_draw = num_samples_per_prompt % num_feedback_categories
                 for feedback_category in feedback_categories:
