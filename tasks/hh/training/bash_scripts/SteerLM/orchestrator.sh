@@ -10,7 +10,7 @@ temperature_train=1.0
 top_p_train=0.9
 max_new_tokens_train=256
 
-iteration=2
+iteration=3
 
 input_prompts_file_train=/cluster/work/sachan/NLF/hh_SteerLM/sampled_prompts_iter_${iteration}.json
 output_dir="/cluster/work/sachan/NLF/hh_SteerLM/output_iter_${iteration}/"
