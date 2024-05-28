@@ -9,11 +9,11 @@ temperature_valid=1.0
 top_p_valid=0.9
 max_new_tokens_valid=256
 
-input_prompts_file_valid="/cluster/work/sachan/NLF/hh_nlf/HH_test_prompts_1000subset.json"
+input_prompts_file_valid="/cluster/work/sachan/NLF/hh_nlf_v2/HH_test_prompts_1000subset.json"
 
-output_dir="/cluster/work/sachan/NLF/hh_nlf/DPO/"
+output_dir="/cluster/work/sachan/NLF/hh_nlf_v2/DPO/"
 
-input_sampling_file_valid="/cluster/work/sachan/NLF/hh_nlf/DPO/DPO_sampling_data_test_1000subset.json"
+input_sampling_file_valid="/cluster/work/sachan/NLF/hh_nlf_v2/DPO/DPO_sampling_data_test_1000subset.json"
 file_prefix_valid="DPO_sampling_data_test_1000subset"
 
 model_path="lomahony/eleuther-pythia2.8b-hh-dpo"
