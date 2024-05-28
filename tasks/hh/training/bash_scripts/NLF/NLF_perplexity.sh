@@ -7,7 +7,7 @@
 #SBATCH --gres=gpumem:80g
 #SBATCH --mem-per-cpu=96000
 #SBATCH --time=2:00:00
-#SBATCH --output="/cluster/work/sachan/NLF/hh_nlf/slurm_output/NLF_ppl.out"
+#SBATCH --output="/cluster/work/sachan/NLF/hh_nlf_v2/slurm_output/NLF_ppl.out"
 #SBATCH --open-mode=append
 #SBATCH --mail-type=END
 

@@ -1,10 +1,10 @@
 logging:
   log_interval: 500
   save_interval: 1000
-  run_id: '31165'
-  run_name: NLF_HH_v0
-  save_dir: /cluster/work/sachan/NLF/hh_nlf
-  scratch_dir: /cluster/scratch/sabadal/nlf/hh_nlf_v0
+  run_id: '81165'
+  run_name: NLF_HH_v2
+  save_dir: /cluster/work/sachan/NLF/hh_nlf_v2
+  scratch_dir: /cluster/scratch/sabadal/nlf/hh_nlf_v2
   wandb_entity: sauc-ms-thesis
   wandb_log: true
   wandb_project: nlf
