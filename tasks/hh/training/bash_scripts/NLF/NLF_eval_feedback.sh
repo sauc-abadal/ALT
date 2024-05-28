@@ -7,9 +7,9 @@ top_p_valid=0.9
 max_new_tokens_valid=256
 
 
-output_dir="/cluster/work/sachan/NLF/hh_nlf/output_iter_1/"
-input_sampling_file_valid="/cluster/work/sachan/NLF/hh_nlf/output_iter_1/NLF_sampling_data_test_1000subset_iter_1.json"
-file_prefix_valid="NLF_sampling_data_test_1000subset_iter_1"
+output_dir="/cluster/work/sachan/NLF/hh_nlf/output_iter_20/"
+input_sampling_file_valid="/cluster/work/sachan/NLF/hh_nlf/output_iter_20/NLF_sampling_data_test_1000subset_iter_20.json"
+file_prefix_valid="NLF_sampling_data_test_1000subset_iter_20"
 
 
 # 1. ---------------- EVAL FEEDBACK (valid) ----------------
