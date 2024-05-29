@@ -10,7 +10,7 @@ temperature_train=1.0
 top_p_train=0.9
 max_new_tokens_train=256
 
-iteration=3
+iteration=4
 
 input_prompts_file_train=/cluster/work/sachan/NLF/hh_SteerLM/sampled_prompts_iter_${iteration}.json
 output_dir="/cluster/work/sachan/NLF/hh_SteerLM/output_iter_${iteration}/"
@@ -23,7 +23,7 @@ else
     model_path="/cluster/work/sachan/NLF/hh_SteerLM/model/iter_$((iteration-1))/model_ckp_$((iteration-1))"
 fi
 
-dep=60664366
+dep=60664516
 
 # 1. ---------------- SAMPLING (train) ----------------
 # Submit SLURM SAMPLE jobs (no dependency) and capture job IDs
