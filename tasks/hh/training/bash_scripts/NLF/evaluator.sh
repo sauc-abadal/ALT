@@ -11,12 +11,12 @@ max_new_tokens_valid=256
 
 iteration=20
 
-input_prompts_file_valid="/cluster/work/sachan/NLF/hh_nlf/HH_test_prompts_1000subset_conditioned.json"
+input_prompts_file_valid="/cluster/work/sachan/NLF/hh_nlf/HH_test_prompts_1000subset_conditioned_Harmful.json"
 
 output_dir="/cluster/work/sachan/NLF/hh_nlf/output_iter_${iteration}/"
 
-input_sampling_file_valid="/cluster/work/sachan/NLF/hh_nlf/output_iter_${iteration}/NLF_sampling_data_test_1000subset_iter_${iteration}.json"
-file_prefix_valid="NLF_sampling_data_test_1000subset_iter_${iteration}"
+input_sampling_file_valid="/cluster/work/sachan/NLF/hh_nlf/output_iter_${iteration}/NLF_sampling_data_test_1000subset_iter_${iteration}_Harmful.json"
+file_prefix_valid="NLF_sampling_data_test_1000subset_iter_${iteration}_Harmful"
 
 model_path="/cluster/work/sachan/NLF/hh_nlf/model/iter_${iteration}/model_ckp_${iteration}"
 
