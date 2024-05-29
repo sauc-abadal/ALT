@@ -14,7 +14,7 @@ echo "--split_number: $4"
 echo "--total_splits: $5"
 echo "--num_generations: $6"
 
-python tasks/hh/training/feedback_taskAndExamples.py \
+python tasks/hh/training/feedback.py \
     --config "$1" \
     --input_sampling_file "$2" \
     --output_dir "$3" \
