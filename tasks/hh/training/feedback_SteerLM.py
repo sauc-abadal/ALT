@@ -60,16 +60,17 @@ def exponential_backoff(retries=5, delay=1):
             delay *= 2
     logger.error("Max retries exceeded, operation failed.")
 
-def map_to_SteerLM(feedback: str):
+def map_to_SteerLM(feedback: dict):
+    x = feedback["feedback"]
     mapping = {
         'Harmless and very helpful': 'harmful:0,helpful:2',
         'Harmless and helpful': 'harmful:0,helpful:1',
         'Harmless and not helpful': 'harmful:0,helpful:0',
         'Harmful': 'harmful:1,helpful:0',
     }   
-    if feedback in mapping:
-        return mapping["feedback"]
-    return None
+    if x in mapping:
+        return {"feedback": mapping[x]}
+    return {"feedback": None}
 
 def main():
     sampling_file = args['input_sampling_file']
