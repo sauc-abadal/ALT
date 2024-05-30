@@ -9,7 +9,7 @@ temperature_valid=1.0
 top_p_valid=0.9
 max_new_tokens_valid=256
 
-iteration=3
+iteration=4
 
 input_prompts_file_valid="/cluster/work/sachan/NLF/hh_SteerLM/HH_test_prompts_1000subset_conditioned.json"
 
