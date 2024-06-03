@@ -9,7 +9,7 @@ temperature_valid=1.0
 top_p_valid=0.9
 max_new_tokens_valid=256
 
-iteration=10
+iteration=11
 
 input_prompts_file_valid="/cluster/work/sachan/NLF/hh_SteerLM/HH_test_prompts_1000subset_conditioned.json"
 
@@ -40,7 +40,7 @@ feedback_v=$(sbatch --dependency=afterok:$feedback_v1:$feedback_v2 tasks/hh/trai
     "$input_sampling_file_valid" \
     "${output_dir}/${file_prefix_valid}_feedback_subset_"{0..1}.json | awk '{print $4}')
 
-# 3. ---------------- PERPLEXITY (valid) ----------------
-# Submit SLURM PERPLEXITY job (dependency on 'feedback_v')
-sbatch --dependency=afterok:$feedback_v tasks/hh/training/bash_scripts/SteerLM/NLF_perplexity.sh \
-    "$config" "$output_dir" "${file_prefix_valid}.json"
+# # 3. ---------------- PERPLEXITY (valid) ----------------
+# # Submit SLURM PERPLEXITY job (dependency on 'feedback_v')
+# sbatch --dependency=afterok:$feedback_v tasks/hh/training/bash_scripts/SteerLM/NLF_perplexity.sh \
+#     "$config" "$output_dir" "${file_prefix_valid}.json"
