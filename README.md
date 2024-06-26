@@ -1,6 +1,8 @@
 # ALT for LLM Alignment
 
-This is the official repository for the paper **tbd**.
+This repository is the official implementation of **tbd**.
+
+![ALT diagram](./assets/ALT_diagram.pdf)
 
 ## Getting Started
 
