@@ -1,6 +1,6 @@
 # ALT for LLM Alignment
 
-![ALT logo](./assets/ALT_logo.png)
+<img src="./assets/ALT_logo.png" alt="alt text" width="100">
 
 This repository is the official implementation of **tbd**.
 
