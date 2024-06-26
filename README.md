@@ -2,7 +2,7 @@
 
 This repository is the official implementation of **tbd**.
 
-![ALT diagram](./assets/ALT_diagram.pdf)
+![ALT diagram](./assets/ALT_diagram.png)
 
 ## Getting Started
 
