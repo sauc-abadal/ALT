@@ -1,0 +1,40 @@
+logging:
+  log_interval: 500
+  save_interval: 1000
+  run_id: '31664'
+  run_name: SteerLM_HH_run
+  save_dir: output
+  scratch_dir: scratch
+  wandb_entity: my_entity
+  wandb_log: true
+  wandb_project: my_project
+model:
+  policy_model:
+    input_padding_side: left
+    name_or_path: mnoukhov/pythia-2.8b-mitchell-sft_hh_rlhf
+  ref_policy:
+    name_or_path: mnoukhov/pythia-2.8b-mitchell-sft_hh_rlhf
+  tokenizer:
+    name_or_path: mnoukhov/pythia-2.8b-mitchell-sft_hh_rlhf
+train:
+  clip_grad: false
+  cuda_deterministic: true
+  entropy_coef: 0.06
+  kl_coef: 0.05
+  lr: 2e-5
+  max_grad_norm: 1.0
+  max_input_length: 512
+  max_new_tokens: 256
+  seed: 42
+  num_epochs: 2
+  warmup_ratio: 0.05
+  training_batch_size_per_card: 32
+  num_samples_per_prompt: 8
+  num_feedback_categories: 4
+  feedbacks:
+    - "harmful:0,helpful:2"
+    - "harmful:0,helpful:1"
+    - "harmful:0,helpful:0"
+    - "harmful:1,helpful:0"
+  unfrozen_layers_ratio: 1.0
+  datapool_drop_factor: 1.0

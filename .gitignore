@@ -1,8 +1,4 @@
 *__pycache__
 wandb/
 output/
-trash/
-Plots/
-scratch/
 *.ipynb
-scratch/.ipynb_checkpoints/

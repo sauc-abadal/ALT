@@ -163,4 +163,4 @@ dependencies:
       - xxhash==3.4.1
       - yarl==1.9.4
       - zipp==3.18.1
-prefix: /cluster/project/sachan/sauc/anaconda3/envs/sample
+prefix: path_to_anaconda/anaconda3/envs/sample
