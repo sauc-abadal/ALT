@@ -1,5 +1,3 @@
-<img src="./assets/ALT_logo.png" alt="alt text" width="150">
-
 # ALT for LLM Alignment
 
 This repository is the official implementation of **tbd**.
