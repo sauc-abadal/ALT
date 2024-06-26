@@ -1,5 +1,7 @@
 # ALT for LLM Alignment
 
+![ALT logo](./assets/ALT_logo.png)
+
 This repository is the official implementation of **tbd**.
 
 ![ALT diagram](./assets/ALT_diagram.png)
