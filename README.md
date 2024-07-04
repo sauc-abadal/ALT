@@ -1,6 +1,6 @@
 # ALT for LLM Alignment
 
-This repository is the official implementation of **tbd**.
+This repository is the official implementation of [Towards Aligning Language Models with Textual Feedback]().
 
 ![ALT diagram](./assets/ALT_diagram.png)
 
