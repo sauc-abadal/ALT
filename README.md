@@ -1,6 +1,6 @@
 # ALT for LLM Alignment
 
-This repository is the official implementation of [Towards Aligning Language Models with Textual Feedback]().
+This repository is the official implementation of [Towards Aligning Language Models with Textual Feedback](https://arxiv.org/abs/2407.16970).
 
 ![ALT diagram](./assets/ALT_diagram.png)
 
